@@ -1,0 +1,12 @@
+@extends('layouts.app')
+@section('title', 'Budget')
+@section('content')
+    @include('cards.range')
+    @include('cards.overview')
+    @include('cards.spendingChart')
+    @include('cards.categoriesChart')
+    @include('cards.categories')
+    @include('cards.topTransactions')
+    @include('misc.refresh')
+    @include('misc.modal-transaction')
+@endsection
