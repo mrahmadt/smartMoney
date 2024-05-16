@@ -14,7 +14,8 @@ Utilize [SMSReceiver-iOS](https://github.com/mrahmadt/SMSReceiver-iOS "SMSReceiv
 #### Simple Budget Web Application
 Access a straightforward web application to view specific budgets and track withdrawals and deposits. Ideal for sharing accounts with others or monitoring home expenses without sharing FireFly-III admin credentials.
 
-![IMG_2867](https://github.com/mrahmadt/smartMoney/assets/957921/99e81f1e-720d-4d6d-980c-8bb767782bbc)
+![IMG_2867](https://github.com/mrahmadt/smartMoney/assets/957921/9bdd2583-2cb9-4fe6-bd9c-8808c8d894fe)
+
 
 
 
