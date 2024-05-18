@@ -37,4 +37,4 @@ Alerts for increases in subscription amounts (**Pending Implementation**).
 
 
 ### Installation Guide
-Instructions for installation will be provided at a later time. Stay tuned for updates.
+Check out our [Wiki Pages](https://github.com/mrahmadt/smartMoney/wiki)
