@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Helpers\func;
 use App\Models\Alert;
 use App\Models\Account;
+use App\Models\User;
 
 class TransactionController extends Controller
 {
@@ -23,14 +24,17 @@ class TransactionController extends Controller
         if(config('billDetector.enabled') && $transaction['type'] == 'withdrawal') {
             $bill = $fireflyIII->findBill($transaction['destination_name']);
             if(!$bill) return response()->json(['error' => 'Bill not found'], 404);
-            $billPercentage = Account::billAmountPercentage($bill);
+            $billPercentage = Account::billOverAmountPercentage($bill);
             if(!$billPercentage){
-                $billPercentage = config('alert.amount_percentage');
+                $billPercentage = config('alert.bill_over_amount_percentage');
             }
             $maxAmount = $bill->attributes->amount_max;
             if($transaction['amount'] >= ($maxAmount + ($maxAmount * ($billPercentage / 100)))){
                 $user = 1;
-                Alert::billOverMaxAmount($bill, $transaction, $billPercentage, $user);
+                $users = User::where('alertBillOverAmountPercentage', 1)->get();
+                foreach($users as $user){
+                    Alert::billOverMaxAmount($bill, $transaction, $billPercentage, $user);
+                }
             }
         }
         

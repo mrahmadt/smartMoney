@@ -19,6 +19,7 @@ return new class extends Migration
             $table->boolean('accessAllAccounts')->default(false);
             $table->boolean('alertViaEmail')->default(true);
             $table->boolean('alertNewBillCreation')->default(true);
+            $table->boolean('alertBillOverAmountPercentage')->default(true);
 
 
         });
@@ -36,6 +37,7 @@ return new class extends Migration
             $table->dropColumn('accessAllAccounts');
             $table->dropColumn('alertViaEmail');
             $table->dropColumn('alertNewBillCreation');
+            $table->dropColumn('alertBillOverAmountPercentage');
         });
     }
 };

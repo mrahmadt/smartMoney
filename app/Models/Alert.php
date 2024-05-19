@@ -78,11 +78,13 @@ class Alert extends Model
                 $user = User::find($user);
                 $user_id = $user->id;
             }
-            $user->notify(new WebPush($title, $message));
-            if($user->alertViaEmail && $type == 'Transaction' ){
-                Mail::to($user)->send(new newTransaction($title, $message, $error));
-            }elseif($user->alertViaEmail && $type == 'Info'){
-                Mail::to($user)->send(new info($title, $message));
+            if($user){
+                $user->notify(new WebPush($title, $message));
+                if($user->alertViaEmail && $type == 'Transaction' ){
+                    Mail::to($user)->send(new newTransaction($title, $message, $error));
+                }elseif($user->alertViaEmail && $type == 'Info'){
+                    Mail::to($user)->send(new info($title, $message));
+                }
             }
         }
 

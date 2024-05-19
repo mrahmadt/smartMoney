@@ -80,8 +80,8 @@ class Account extends Model
         return false;
     }
 
-    public static function billAmountPercentage($account){
-        $pattern = '/billPercentage:"([^"]*)"/m';
+    public static function billOverAmountPercentage($account){
+        $pattern = '/alertBillOverAmountPercentage:"([^"]*)"/m';
         $notes = $account->attributes->notes;
         if (preg_match($pattern, $notes, $matches)) {
             if(!is_numeric($matches[1])) return false;
