@@ -12,7 +12,7 @@ class createAlert extends Command
      *
      * @var string
      */
-    protected $signature = 'app:createAlert {--pushNotification} {--title=} {--message=} {--type=} {--user_id=}';
+    protected $signature = 'app:createAlert{--title=} {--message=} {--type=} {--user_id=}';
 
     /**
      * The console command description.
@@ -40,11 +40,9 @@ class createAlert extends Command
         if ($type === null) {
             $type = $this->ask('Please enter alert type.');
         }
-
-        $pushNotification = $this->option('pushNotification');
         $user_id = $this->option('user_id');
 
-        Alert::createAlert($title, $message, $type , $user_id, $pushNotification);
+        Alert::createAlert($title, $message, $type , $user_id);
 
     }
 }

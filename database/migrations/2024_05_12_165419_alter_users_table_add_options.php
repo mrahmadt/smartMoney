@@ -15,9 +15,11 @@ return new class extends Migration
         {
             $table->string('budgets')->nullable();
             $table->boolean('accessAllBudgets')->default(false);
-
             $table->string('accounts')->nullable();
             $table->boolean('accessAllAccounts')->default(false);
+            $table->boolean('alertViaEmail')->default(true);
+            $table->boolean('alertNewBillCreation')->default(true);
+
 
         });
     }
@@ -32,6 +34,8 @@ return new class extends Migration
             $table->dropColumn('accessAllBudgets');
             $table->dropColumn('accounts');
             $table->dropColumn('accessAllAccounts');
+            $table->dropColumn('alertViaEmail');
+            $table->dropColumn('alertNewBillCreation');
         });
     }
 };

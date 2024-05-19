@@ -16,3 +16,7 @@ Route::get('/notifications/send', [App\Http\Controllers\NotificationManagerContr
 
 Route::post('/notifications/subscribe', [App\Http\Controllers\NotificationManagerController::class, 'subscribe'])->middleware(['auth:sanctum']);
 Route::post('/notifications/unsubscribe', [App\Http\Controllers\NotificationManagerController::class, 'unsubscribe'])->middleware(['auth:sanctum']);
+
+
+Route::post('/webhook/checkTransactionAmount', [App\Http\Controllers\TransactionController::class, 'checkTransactionAmount']);
+

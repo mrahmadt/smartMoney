@@ -17,3 +17,4 @@ Schedule::command(calAverageTransactions::class, ['--type=deposit'])->weekly();
 
 
 Schedule::command(billDetector::class, ['--type=deposit'])->weekly();
+

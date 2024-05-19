@@ -23,8 +23,6 @@ window.addEventListener('load', function () {
                 webpush_button.classList.add("hidden");
             }
         });
-    }
-    if (document.getElementById('webpush-button')) {
         document.getElementById('disable-webpush').addEventListener('click', function () {
             disablePushNotifications();
             var webpush_button = document.querySelector("#webpush-button");
@@ -52,11 +50,11 @@ window.addEventListener('load', function () {
                     webpush_button.classList.remove("hidden");
                 }
             }else{
-                var disable_webpush = document.querySelector("#disable-webpush");
+                // var disable_webpush = document.querySelector("#disable-webpush");
                 // alert("You are subscribed to push notifications.");
-                if(disable_webpush !==null){
-                    disable_webpush.classList.remove("hidden");
-                }
+                // if(disable_webpush !==null){
+                //     disable_webpush.classList.remove("hidden");
+                // }
             }
         })
         .catch((err) => {

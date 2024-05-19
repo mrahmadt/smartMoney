@@ -4,6 +4,8 @@ namespace App\Console\Commands;
 use App\Helpers\fireflyIII;
 
 use Illuminate\Console\Command;
+use App\Models\Alert;
+use App\Models\User;
 
 class billDetector extends Command
 {
@@ -54,17 +56,24 @@ class billDetector extends Command
 
         foreach($recurringDetected as $repeat_freq => $items){
             foreach($items as $item){
+                $billTitle =  $item['destination_name'];
+                $RoleTitle =  $item['destination_name'] . ' bills';
                 $bill = $fireflyIII->createBill([
-                    'name' => $item['destination_name'],
+                    'name' => $billTitle,
                     'amount_min' => $item['minAmount'],
                     'amount_max' => $item['maxAmount'],
                     'repeat_freq' => $repeat_freq,
                     'date' => $item['date'],
                 ]);
                 if($bill){
+                    
+                    $users = User::where('alertNewBillCreation', true)->get();
+                    foreach($users as $user){
+                        Alert::createAlert('Bill Created', 'New bill has been created (' . $billTitle . ')', $user);
+                    }
                     $this->info('Bill created for '.$item['destination_name']);
                     $role = $fireflyIII->createRole([
-                        'title' => $item['destination_name'] . ' bills',
+                        'title' => $RoleTitle,
                         'description' => 'Flag ' . $item['destination_name'] . ' transaction as bill',
                         'rule_group_title' => 'Bills',
                         'trigger' => 'store-journal',

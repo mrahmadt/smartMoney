@@ -8,9 +8,46 @@ use Illuminate\View\View;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Auth;
 use App\Helpers\func;
+use App\Models\Alert;
+use App\Models\Account;
 
 class TransactionController extends Controller
 {
+    public function checkTransactionAmount(Request $request){
+        $data = $request->json()->all();
+        if(!isset($data['content']['transactions'][0])) return response()->json(['error' => 'No transaction found'], 404);
+        $transaction = $data['content']['transactions'][0];
+
+        $fireflyIII = new fireflyIII();
+
+        if(config('billDetector.enabled') && $transaction['type'] == 'withdrawal') {
+            $bill = $fireflyIII->findBill($transaction['destination_name']);
+            if(!$bill) return response()->json(['error' => 'Bill not found'], 404);
+            $billPercentage = Account::billAmountPercentage($bill);
+            if(!$billPercentage){
+                $billPercentage = config('alert.amount_percentage');
+            }
+            $maxAmount = $bill->attributes->amount_max;
+            if($transaction['amount'] >= ($maxAmount + ($maxAmount * ($billPercentage / 100)))){
+                $user = 1;
+                Alert::billOverMaxAmount($bill, $transaction, $billPercentage, $user);
+            }
+        }
+        
+        //account alertAbnormalTransaction
+        
+        //account alertBillOverMaxAmount
+
+        //account abnormalTransactionPercentage
+        
+        //acount BillOverMaxAmountPercentage
+
+        // if(config('calAverageTransactions.withdrawal_enabled')) {
+        // if(config('calAverageTransactions.deposit_enabled')) {
+        // Abnormal transaction
+        // }
+    }
+
     public function index($id)
     {
         $fireflyIII = new fireflyIII();

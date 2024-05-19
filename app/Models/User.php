@@ -23,6 +23,12 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'budgets',
+        'accessAllBudgets',
+        'accounts',
+        'accessAllAccounts',
+        'alertNewBillCreation',
+        'alertViaEmail',
     ];
 
     /**
@@ -45,6 +51,10 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'accessAllBudgets' => 'boolean',
+            'accessAllAccounts' => 'boolean',
+            'alertViaEmail' => 'boolean',
+            'alertNewBillCreation' => 'boolean',
         ];
     }
 

@@ -18,7 +18,9 @@ class Account extends Model
         'account_code',
         'sms_sender',
         'budget_id',
-        'alert',
+        'alertNewTransactions',
+        // 'alertAbnormalTransaction',
+        // 'abnormalTransactionPercentage',
         'user_id',
         'defaultAccount',
         'tags',
@@ -33,7 +35,8 @@ class Account extends Model
     protected function casts(): array
     {
         return [
-            'alert' => 'boolean',
+            'alertNewTransactions' => 'boolean',
+            // 'alertAbnormalTransaction' => 'boolean',
             'defaultAccount' => 'boolean',
             'tags' => 'array',
             'values' => 'array',
@@ -75,7 +78,16 @@ class Account extends Model
             return $matches[1];
         }
         return false;
+    }
 
+    public static function billAmountPercentage($account){
+        $pattern = '/billPercentage:"([^"]*)"/m';
+        $notes = $account->attributes->notes;
+        if (preg_match($pattern, $notes, $matches)) {
+            if(!is_numeric($matches[1])) return false;
+            return (float)$matches[1];
+        }
+        return false;
     }
 
 }

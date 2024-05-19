@@ -28,6 +28,28 @@ class fireflyIII{
         if(isset($bill->exception) || isset($bill->errors)) return false;
         return $bill;
     }
+    public function getBills($page = 1, $limit = 50){
+        $options = [
+            'limit' => $limit,
+            'page' => $page,
+        ];
+        $bills = $this->callAPI(apiName:'bills', parms:$options);
+        if(isset($bills->exception)) return false;
+        return $bills;
+    }
+    public function findBill($name = null){
+        $page = 1;
+        while(true){
+            $bills = $this->getBills($page, 50);
+            if(!$bills) return false;
+            foreach($bills->data as $bill){
+                if($bill->attributes->name == $name) return $bill;
+            }
+            if($bills->meta->pagination->current_page == $bills->meta->pagination->total_pages) break;
+            $page++;
+        }
+        return false;
+    }
 
     public function createRole($options){
         $defaultOptions = [
@@ -44,6 +66,31 @@ class fireflyIII{
         if(isset($role->exception) || isset($role->errors)) return false;
         return $role;
     }
+
+    public function getRoles($page = 1, $limit = 50){
+        $options = [
+            'limit' => $limit,
+            'page' => $page,
+        ];
+        $rules = $this->callAPI(apiName:'rules', parms:$options);
+        if(isset($rules->exception)) return false;
+        return $rules;
+    }
+
+    public function findRole($name = null){
+        $page = 1;
+        while(true){
+            $rules = $this->getRoles($page, 50);
+            if(!$rules) return false;
+            foreach($rules->data as $rule){
+                if($rule->attributes->title == $name) return $rule;
+            }
+            if($rules->meta->pagination->current_page == $rules->meta->pagination->total_pages) break;
+            $page++;
+        }
+        return false;
+    }
+
     public function triggerRole($options){
         $defaultOptions = [
             // 'id' => 'Rent',
