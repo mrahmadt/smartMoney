@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Helpers\fireflyIII;
 
 class Transaction extends Model
 {
@@ -82,5 +83,69 @@ class Transaction extends Model
         }
 
         return $stats;
+    }
+    public static function abnormalTransaction($transaction, $fireflyIII = null){
+        if(!$fireflyIII) $fireflyIII = new fireflyIII();
+        $type = $transaction['type'];
+        if(config('alert.abnormal_transactions_'.$type.'_enabled')) {
+            $order = config('alert.abnormal_transactions_'.$type.'_order');
+            foreach($order as $item){
+                $percentage = config('alert.abnormal_transactions_'.$type.'_'.$item.'_percentage');
+                /*
+                    type: withdrawal diposit
+                    attribute: all source destination category
+                    key: all "Visa SAIB CC"
+                */
+                $key = null;
+                $attribute = $item;
+                if( $item == 'source') {
+                    $attribute = 'source_name';
+                }elseif($item == 'destination'){
+                    $attribute = 'destination_name';
+                }elseif($item == 'all'){
+                    $attribute = 'all';
+                    $key = 'all';
+                }elseif($item == 'category'){
+                    $attribute = 'category_name';
+                }
+                if($key == null) {
+                    $key = $transaction[$item];
+                    if($key == '') $key = 'Unknown';
+                }
+                $averageTransaction = AverageTransaction::where('type', $type)
+                ->where('attribute', $attribute)
+                ->where('key', $key)->first();
+                if($averageTransaction){
+                    $average_amount = $averageTransaction->average_amount;
+                    if($transaction['amount'] >= ($average_amount + ($average_amount * ($percentage / 100)))){
+                        $user = 1;
+                        $users = User::where('alertAbnormalTransaction', 1)->get();
+                        foreach($users as $user){
+                            Alert::abnormalTransaction($item, $transaction, $percentage,$averageTransaction, $user);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    public static function checkBillOverMaxAmount($transaction, $fireflyIII = null){
+        if(!$fireflyIII) $fireflyIII = new fireflyIII();
+        if(config('billDetector.enabled') && $transaction['type'] == 'withdrawal') {
+            $bill = $fireflyIII->findBill($transaction['destination_name']);
+            if(!$bill) return false; //return response()->json(['error' => 'Bill not found'], 404);
+            $billPercentage = Account::billOverAmountPercentage($bill);
+            if(!$billPercentage){
+                $billPercentage = config('alert.bill_over_amount_percentage');
+            }
+            $maxAmount = $bill->attributes->amount_max;
+            if($transaction['amount'] >= ($maxAmount + ($maxAmount * ($billPercentage / 100)))){
+                $user = 1;
+                $users = User::where('alertBillOverAmountPercentage', 1)->get();
+                foreach($users as $user){
+                    Alert::billOverMaxAmount($bill, $transaction, $billPercentage, $user);
+                }
+            }
+        }
     }
 }

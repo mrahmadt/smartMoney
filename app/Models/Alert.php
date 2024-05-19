@@ -65,6 +65,20 @@ class Alert extends Model
         Alert::createAlert($title, $message, 'Info', $user);
     }
 
+    public static function abnormalTransaction($item, $transaction, $percentage,$averageTransaction, $user = null){
+        $itemName = null;
+        if($item == 'source' || $item == 'destination'){
+            $itemName = 'account ' . $transaction[$item.'_name'];
+        }elseif($item == 'all'){
+            $itemName = 'all transactions';
+        }elseif($item == 'category'){
+            $itemName = 'category '  . $transaction[$item];
+        }
+
+        $message = 'Transaction: '.$transaction['description'].' has an abnormal amount of '.$transaction['amount'].' '.$transaction['currency_symbol'].' ('.$percentage.'%) compared to the average amount of ' . $averageTransaction->average_amount . ' for ' . $itemName . ' ('.$transaction['type'].')';
+        Alert::createAlert('Abnormal Transaction', $message, 'Info', $user);
+    }
+
     public static function billOverMaxAmount($bill, $transaction, $billPercentage, $user = null){
         $message = 'Bill: '.$bill->attributes->name.' has a max amount of '.$bill->attributes->amount_max.' '.$transaction->currency_symbol.' and you have spent '.$transaction->amount.' '.$transaction->currency_symbol.' ('.$billPercentage.'%)';
         Alert::createAlert('Bill Over Max Amount', $message, 'Info', $user);

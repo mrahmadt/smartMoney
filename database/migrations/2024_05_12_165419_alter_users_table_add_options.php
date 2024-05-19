@@ -20,8 +20,7 @@ return new class extends Migration
             $table->boolean('alertViaEmail')->default(true);
             $table->boolean('alertNewBillCreation')->default(true);
             $table->boolean('alertBillOverAmountPercentage')->default(true);
-
-
+            $table->boolean('alertAbnormalTransaction')->default(true);
         });
     }
 
@@ -38,6 +37,7 @@ return new class extends Migration
             $table->dropColumn('alertViaEmail');
             $table->dropColumn('alertNewBillCreation');
             $table->dropColumn('alertBillOverAmountPercentage');
+            $table->dropColumn('alertAbnormalTransaction');
         });
     }
 };

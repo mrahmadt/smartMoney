@@ -29,6 +29,7 @@ class User extends Authenticatable
         'accessAllAccounts',
         'alertNewBillCreation',
         'alertBillOverAmountPercentage',
+        'alertAbnormalTransaction',
         'alertViaEmail',
     ];
 
@@ -57,6 +58,7 @@ class User extends Authenticatable
             'alertViaEmail' => 'boolean',
             'alertNewBillCreation' => 'boolean',
             'alertBillOverAmountPercentage' => 'boolean',
+            'alertAbnormalTransaction' => 'boolean',
         ];
     }
 

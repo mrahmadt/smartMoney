@@ -11,45 +11,21 @@ use App\Helpers\func;
 use App\Models\Alert;
 use App\Models\Account;
 use App\Models\User;
+use App\Models\Transaction;
+use App\Models\AverageTransaction;
 
 class TransactionController extends Controller
 {
-    public function checkTransactionAmount(Request $request){
+    public function newTransactionWebhook(Request $request){
         $data = $request->json()->all();
+        if(!isset($data['trigger']) || $data['trigger'] != 'STORE_TRANSACTION') return response()->json(['error' => 'Invalid trigger'], 400);
         if(!isset($data['content']['transactions'][0])) return response()->json(['error' => 'No transaction found'], 404);
         $transaction = $data['content']['transactions'][0];
 
         $fireflyIII = new fireflyIII();
 
-        if(config('billDetector.enabled') && $transaction['type'] == 'withdrawal') {
-            $bill = $fireflyIII->findBill($transaction['destination_name']);
-            if(!$bill) return response()->json(['error' => 'Bill not found'], 404);
-            $billPercentage = Account::billOverAmountPercentage($bill);
-            if(!$billPercentage){
-                $billPercentage = config('alert.bill_over_amount_percentage');
-            }
-            $maxAmount = $bill->attributes->amount_max;
-            if($transaction['amount'] >= ($maxAmount + ($maxAmount * ($billPercentage / 100)))){
-                $user = 1;
-                $users = User::where('alertBillOverAmountPercentage', 1)->get();
-                foreach($users as $user){
-                    Alert::billOverMaxAmount($bill, $transaction, $billPercentage, $user);
-                }
-            }
-        }
-        
-        //account alertAbnormalTransaction
-        
-        //account alertBillOverMaxAmount
-
-        //account abnormalTransactionPercentage
-        
-        //acount BillOverMaxAmountPercentage
-
-        // if(config('calAverageTransactions.withdrawal_enabled')) {
-        // if(config('calAverageTransactions.deposit_enabled')) {
-        // Abnormal transaction
-        // }
+        Transaction::checkBillOverMaxAmount($transaction, $fireflyIII);
+        Transaction::abnormalTransaction($transaction, $fireflyIII);
     }
 
     public function index($id)
