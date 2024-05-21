@@ -149,6 +149,18 @@ class fireflyIII{
         ];
         $transaction = array_merge($transaction, $data);
 
+        // $transaction['notes']['account_id'] = $accountSource['account']->id;
+        // $transaction['notes']['user_id'] = $accountSource['account']->user_id;
+
+        if(is_array($transaction['notes'])){
+            $notes = json_encode($transaction['notes']);
+            // check if json_encode failed
+            if($notes == false) {
+                $notes = implode("\n", $transaction['notes']);
+            }else{
+                $transaction['notes'] = $notes;
+            }
+        }
         $params = [
             'error_if_duplicate_hash' => true,
             'transactions' => [$transaction],
