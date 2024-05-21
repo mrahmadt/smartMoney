@@ -11,6 +11,11 @@ Utilize [SMSReceiver-iOS](https://github.com/mrahmadt/SMSReceiver-iOS) to seamle
 - Transaction categorization using ChatGPT or from similar transactions stored in FireFly-III (Optional)
 - Create transaction in FireFly
 
+
+![sms2transaction](https://github.com/mrahmadt/smartMoney/assets/957921/add1a68a-7aab-4d4b-a928-7d93b133831b)
+
+
+
 ## Detection of Abnormal Transactions
 Identify withdrawals exceeding the average amount from expense accounts or categories.
 
