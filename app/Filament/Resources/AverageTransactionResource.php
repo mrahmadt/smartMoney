@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 class AverageTransactionResource extends Resource
 {
     protected static ?string $model = AverageTransaction::class;
+    protected static ?string $navigationGroup = 'Transactions';
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-group';
 

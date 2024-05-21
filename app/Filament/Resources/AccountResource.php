@@ -12,29 +12,51 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Database\Eloquent\Model;
+use App\Helpers\fireflyIII;
+use Closure;
+use Illuminate\Support\Str;
 
 class AccountResource extends Resource
 {
     protected static ?string $model = Account::class;
+    protected static ?string $navigationGroup = 'SMS';
 
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
+    protected static ?string $modelLabel = 'Accounts';
+    protected static ?int $navigationSort = 3;
 
+    protected static $ffaccounts = [];
+    protected static $ffbudgets = [];
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('FF_account_id')
+                Forms\Components\Select::make('FF_account_id')
                     ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('FF_account_name')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('FF_account_type')
-                    ->maxLength(255),
+                    ->label('Firefly-III Account')
+                    ->options(
+                        function (Model $record = null){
+                            $accounts = [];
+                            if(!static::$ffaccounts){
+                                $fireflyIII = new fireflyIII();
+                                static::$ffaccounts = $fireflyIII->getAccounts();
+                            }
+                            foreach(static::$ffaccounts->data as $account){
+                                    $accounts[$account->id] = $account->attributes->name;
+                            }
+                            return $accounts;
+                        }
+                    )
+                    ,
                 Forms\Components\TextInput::make('account_code')
+                    ->label('SMS Account Code')
                     ->maxLength(255),
                 Forms\Components\TextInput::make('sms_sender')
+                    ->label('SMS Sender')
                     ->maxLength(255),
                 Forms\Components\TextInput::make('budget_id')
+                    ->label('Firefly-III Budget')
                     ->numeric(),
                 Forms\Components\Toggle::make('sendTransactionAlert')
                     ->required(),
@@ -42,8 +64,9 @@ class AccountResource extends Resource
                     ->relationship('user', 'name'),
                 Forms\Components\Toggle::make('defaultAccount')
                     ->required(),
-                Forms\Components\TextInput::make('tags'),
-                Forms\Components\TextInput::make('values'),
+                Forms\Components\TagsInput::make('tags')->columnSpanFull()
+                ,
+                Forms\Components\KeyValue::make('values')->addActionLabel('Add Value')->columnSpanFull(),
             ]);
     }
 
@@ -52,8 +75,22 @@ class AccountResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('FF_account_name')
-                    ->label('Firefly-III Account')
-                    ->searchable(),
+                ->label('Firefly-III Account')
+                ->formatStateUsing(function (Model $record){
+                    if(!static::$ffaccounts){
+                        $fireflyIII = new fireflyIII();
+                        static::$ffaccounts = $fireflyIII->getAccounts();
+                    }
+                    foreach(static::$ffaccounts->data as $account){
+                        if($account->id == $record->FF_account_id){
+                            return $account->attributes->name;
+                        }
+                    }
+                    return 'Unknown';
+                }),
+                // Tables\Columns\TextColumn::make('FF_account_name')
+                //     ->label('Firefly-III Account')
+                //     ->searchable(),
                 Tables\Columns\TextColumn::make('account_code')
                     ->label('SMS Account Code')
                     ->searchable(),
@@ -62,17 +99,29 @@ class AccountResource extends Resource
                 //     ->searchable(),
                 Tables\Columns\TextColumn::make('budget_id')
                     ->label('FireFly-III Budget')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\IconColumn::make('sendTransactionAlert')
+                    ->formatStateUsing(function (Model $record){
+                        if(!static::$ffbudgets){
+                            $fireflyIII = new fireflyIII();
+                            static::$ffbudgets = $fireflyIII->getBudgets(limit: 500);
+                        }
+                        foreach(static::$ffbudgets->data as $ffbudgets){
+                            if($ffbudgets->id == $record->budget_id){
+                                return $ffbudgets->attributes->name;
+                            }
+                        }
+                        return 'Unknown';
+                    }),
+                Tables\Columns\ToggleColumn::make('sendTransactionAlert')
                     ->label('Transaction Alert')
-                    ->boolean(),
+                    ,
+                    // ->boolean(),
                 Tables\Columns\TextColumn::make('user.name')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\IconColumn::make('defaultAccount')
+                Tables\Columns\ToggleColumn::make('defaultAccount')
                     ->label('Default?')
-                    ->boolean(),
+                    ,
+                    // ->boolean(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

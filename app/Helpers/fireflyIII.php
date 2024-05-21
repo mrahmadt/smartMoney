@@ -187,6 +187,13 @@ class fireflyIII{
         if(isset($budget->exception) || isset($budget->errors)) return false;
         return $budget;
     }
+    public function getBudgets($limit = 50, $page = 1, $start = null, $end = null){
+        if($start == null) $start = date('Y-m-01');
+        if($end == null) $end = date('Y-m-t');
+        $budgets = $this->callAPI('budgets', [ 'limit' => $limit, 'page' => $page, 'start' => $start, 'end' => $end]);
+        if(isset($budgets->exception) || isset($budgets->errors)) return false;
+        return $budgets;
+    }
 
     public function getTransaction($transaction_id){
         $transaction = $this->callAPI('transactions/' . $transaction_id);

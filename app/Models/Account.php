@@ -13,19 +13,15 @@ class Account extends Model
     protected $table = 'accounts';
     protected $fillable = [
         'FF_account_id',
-        'FF_account_name',
-        'FF_account_type',
-        'FF_account_name_change_to',
         'account_code',
         'sms_sender',
         'budget_id',
         'alertNewTransactions',
-        // 'alertAbnormalTransaction',
-        // 'abnormalTransactionPercentage',
         'user_id',
         'defaultAccount',
         'tags',
         'values',
+        'sendTransactionAlert',
     ];
 
     /**
@@ -93,5 +89,11 @@ class Account extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id', 'id');
+    }
+
+    public function ffaccount(){
+        $firefly = new fireflyIII();
+        return $firefly->getAccount($this->FF_account_id);
+
     }
 }

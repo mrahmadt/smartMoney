@@ -119,7 +119,7 @@ class createTransactionJob implements ShouldQueue
                 if($defaultAccount){
                     $transaction['source_id'] = $defaultAccount->FF_account_id;
                     $alertNewTransaction['user'] = $defaultAccount['account']->user_id;
-                    $alertNewTransaction['source_name'] = $defaultAccount->FF_account_name ?? $this->data['source'];
+                    $alertNewTransaction['source_name'] = $this->data['source'];
                     $transaction = $this->transactionOptions($transaction, $defaultAccount);
                 }else{
                     $error['messages'][] = 'Source account not found and no default account set';
@@ -154,7 +154,7 @@ class createTransactionJob implements ShouldQueue
                 if($defaultAccount){
                     $alertNewTransaction['user'] = $defaultAccount['account']->user_id;
                     $transaction['destination_id'] = $defaultAccount->FF_account_id;
-                    $alertNewTransaction['destination_name'] = $defaultAccount->FF_account_name ?? $this->data['source'];
+                    $alertNewTransaction['destination_name'] = $this->data['source'];
                     $transaction = $this->transactionOptions($transaction, $defaultAccount);
                 }else{
                     $error['messages'][] = 'destination account not found and no default account set';

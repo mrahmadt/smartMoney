@@ -14,8 +14,6 @@ return new class extends Migration
         Schema::create('accounts', function (Blueprint $table) {
             $table->id();
             $table->bigInteger('FF_account_id');
-            $table->string('FF_account_name')->nullable();
-            $table->string('FF_account_type')->nullable();
             $table->string('account_code')->nullable();
             $table->string('sms_sender')->nullable();
             $table->bigInteger('budget_id')->nullable();
