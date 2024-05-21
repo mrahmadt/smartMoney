@@ -10,7 +10,7 @@ use App\Models\User;
 use App\Notifications\WebPush;
 use App\Mail\newTransaction;
 use App\Mail\info;
-
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Alert extends Model
 {
     use HasFactory;
@@ -109,5 +109,10 @@ class Alert extends Model
         $alert->type = $type;
         $alert->save();
 
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id', 'id');
     }
 }

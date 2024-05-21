@@ -1,4 +1,4 @@
-<div>{{$body}}</div>
+<div>{!! nl2br(e($body)) !!}</div>
 
 
 @if($error)

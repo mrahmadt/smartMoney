@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('average_transactions', function (Blueprint $table) {
+            $table->id();
             $table->string('type');
             $table->string('attribute');
             $table->string('key');
