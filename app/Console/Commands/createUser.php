@@ -37,7 +37,13 @@ class createUser extends Command
                 if ($email === null) {
                     $email = $this->ask('Please enter your E-Mail.');
                 }
-        
+
+                if ($this->confirm('Is admin user?', true)) {
+                    $is_admin = true;
+                } else {
+                    $is_admin = false;
+                }
+
                 // Always enter password from userinput for more security.
                 $password = $this->secret('Please enter a new password.');
                 $password_confirmation = $this->secret('Please confirm the password');
@@ -52,6 +58,7 @@ class createUser extends Command
                     'email' => $email,
                     'email_verified_at' => now(),
                     'password' => Hash::make($password),
+                    'is_admin' => $is_admin,
                 ];
                 $password = Hash::make('secret');
                 try {

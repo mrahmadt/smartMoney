@@ -21,6 +21,7 @@ return new class extends Migration
             $table->boolean('alertNewBillCreation')->default(true);
             $table->boolean('alertBillOverAmountPercentage')->default(true);
             $table->boolean('alertAbnormalTransaction')->default(true);
+            $table->boolean('is_admin')->default(false);
         });
     }
 
@@ -38,6 +39,7 @@ return new class extends Migration
             $table->dropColumn('alertNewBillCreation');
             $table->dropColumn('alertBillOverAmountPercentage');
             $table->dropColumn('alertAbnormalTransaction');
+            $table->dropColumn('is_admin');
         });
     }
 };

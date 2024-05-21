@@ -10,9 +10,17 @@ use Laravel\Sanctum\HasApiTokens;
 use NotificationChannels\WebPush\HasPushSubscriptions;
 use Illuminate\Support\Facades\Auth;
 
-class User extends Authenticatable
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
+
+class User extends Authenticatable implements FilamentUser
 {
     use HasFactory, Notifiable, HasApiTokens, HasPushSubscriptions;
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->is_admin;
+    }
 
     /**
      * The attributes that are mass assignable.
@@ -31,6 +39,7 @@ class User extends Authenticatable
         'alertBillOverAmountPercentage',
         'alertAbnormalTransaction',
         'alertViaEmail',
+        'is_admin'
     ];
 
     /**
@@ -59,6 +68,7 @@ class User extends Authenticatable
             'alertNewBillCreation' => 'boolean',
             'alertBillOverAmountPercentage' => 'boolean',
             'alertAbnormalTransaction' => 'boolean',
+            'is_admin' => 'boolean',
         ];
     }
 
