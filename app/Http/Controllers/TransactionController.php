@@ -26,6 +26,9 @@ class TransactionController extends Controller
 
         Transaction::checkBillOverMaxAmount($transaction, $fireflyIII);
         Transaction::abnormalTransaction($transaction, $fireflyIII);
+        
+        // TODO:  Add transaction alert
+
     }
 
     public function index($id)

@@ -21,8 +21,45 @@ class Alert extends Model
         'message',
         'type',
     ];
+    public static function newTransaction($transaction)
+    {
 
-    public static function newTransaction($options)
+        // json_decode($transaction['notes']);
+        // check if json is valid
+
+        // Do we have budget_id, get remaining amount
+
+        // check if transaction is a bill
+
+        // if not, then normal transaction message
+
+
+        // $options = array_merge($defaultOptions, $options);
+        
+        // if(is_numeric($options['amount'])){
+        //     $options['amount'] = number_format($options['amount'], 2);
+        //     $options['amount'] = str_replace('.00','',$options['amount']);
+        // }
+
+
+        // $title = $options['amount'].$options['currency'];
+
+        // if($options['type'] == 'withdrawal'){
+        //     $title .= ' To '. $options['destination_name'];
+        // }elseif($options['type'] == 'deposit'){
+        //     $title .= ' From: '. $options['source_name'];
+        // }else{
+        //     $title .= ' ' . $options['source_name'].' to '.$options['destination_name'];
+        // }
+        // if($options['errors']){
+        //     $title = 'Error: '. $title;
+        // }
+
+        // $message = $options['message'];
+
+        // Alert::createAlert($title, $message, 'Transaction', $options['user'], $options['errors']);
+    }
+    public static function newTransaction2($options)
     {
         $defaultOptions = [
             'type' => null,
