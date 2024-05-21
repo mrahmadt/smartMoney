@@ -7,8 +7,8 @@ smartMoney automate SMS parsing and transaction creation for FireFly-III with su
 ## Automatic SMS Parsing and Transaction Creation
 Utilize [SMSReceiver-iOS](https://github.com/mrahmadt/SMSReceiver-iOS) to seamlessly forward your bank SMS messages to smartMoney. Features include:
 - SMS parsing using regular expressions
-- SMS parsing using ChatGPT
-- Transaction categorization using ChatGPT
+- SMS parsing using ChatGPT (Optional)
+- Transaction categorization using ChatGPT or from similar transactions stored in FireFly-III (Optional)
 - Create transaction in FireFly
 
 ## Detection of Abnormal Transactions
