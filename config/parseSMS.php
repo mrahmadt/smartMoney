@@ -18,4 +18,8 @@ return [
 
     'detect_category_openai' => (bool) env('PARSE_SMS_DETECT_CATEGORY_OPENAI', false),
 
+    'clean_processed_sms' => (bool) env('PARSE_SMS_CLEAN_PROCCESSED_SMS', true),
+    'clean_invalid_sms' => (bool) env('PARSE_SMS_CLEAN_INVALID_SMS', true),
+    'clean_error_sms' => (bool) env('PARSE_SMS_CLEAN_ERROR_SMS', false),
+
 ];
