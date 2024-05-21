@@ -19,7 +19,7 @@ class info extends Mailable
      */
     public function __construct(
         $subject = 'Info',
-        public $message = 'Hello!.',
+        public $body = 'Hello!.',
         )
     {
         $this->subject = $subject;

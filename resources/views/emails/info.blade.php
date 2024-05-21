@@ -1,1 +1,1 @@
-<div>{{$message}}</div>
+<div>{{$body}}</div>

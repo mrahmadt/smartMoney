@@ -19,7 +19,7 @@ class newTransaction extends Mailable
      */
     public function __construct(
         $subject = 'New Transaction',
-        public $message = 'A new transaction has been made.',
+        public $body = 'A new transaction has been made.',
         public $error = [],
         )
     {

@@ -1,4 +1,4 @@
-<div>{{$message}}</div>
+<div>{{$body}}</div>
 
 
 @if($error)
