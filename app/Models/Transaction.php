@@ -96,22 +96,26 @@ class Transaction extends Model
                     attribute: all source destination category
                     key: all "Visa SAIB CC"
                 */
-                $key = null;
+                $key = 'Unknown';
                 $attribute = $item;
+
                 if( $item == 'source') {
                     $attribute = 'source_name';
+                    $key = $transaction[$attribute];
+
                 }elseif($item == 'destination'){
                     $attribute = 'destination_name';
+                    $key = $transaction[$attribute];
+
                 }elseif($item == 'all'){
                     $attribute = 'all';
                     $key = 'all';
+                    
                 }elseif($item == 'category'){
                     $attribute = 'category_name';
+                    $key = $transaction[$attribute];
                 }
-                if($key == null) {
-                    $key = $transaction[$item];
-                    if($key == '') $key = 'Unknown';
-                }
+
                 $averageTransaction = AverageTransaction::where('type', $type)
                 ->where('attribute', $attribute)
                 ->where('key', $key)->first();
