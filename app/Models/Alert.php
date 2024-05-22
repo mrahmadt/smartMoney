@@ -11,6 +11,8 @@ use App\Notifications\WebPush;
 use App\Mail\newTransaction;
 use App\Mail\info;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Helpers\fireflyIII;
+
 class Alert extends Model
 {
     use HasFactory;
@@ -23,79 +25,56 @@ class Alert extends Model
     ];
     public static function newTransaction($transaction)
     {
+        $fireflyIII = new fireflyIII();
+        $budget = null;
+        if($transaction['budget_id']){
+            $budget = $fireflyIII->getBudget($transaction['budget_id']);
+        }
+        if(isset($budget->data)){
+            $budget = $budget->data;
+        }
 
-        // json_decode($transaction['notes']);
+        $notes = json_decode($transaction['notes']);
         // check if json is valid
-
-        // Do we have budget_id, get remaining amount
-
-        // check if transaction is a bill
-
-        // if not, then normal transaction message
-
-
-        // $options = array_merge($defaultOptions, $options);
-        
-        // if(is_numeric($options['amount'])){
-        //     $options['amount'] = number_format($options['amount'], 2);
-        //     $options['amount'] = str_replace('.00','',$options['amount']);
-        // }
-
-
-        // $title = $options['amount'].$options['currency'];
-
-        // if($options['type'] == 'withdrawal'){
-        //     $title .= ' To '. $options['destination_name'];
-        // }elseif($options['type'] == 'deposit'){
-        //     $title .= ' From: '. $options['source_name'];
-        // }else{
-        //     $title .= ' ' . $options['source_name'].' to '.$options['destination_name'];
-        // }
-        // if($options['errors']){
-        //     $title = 'Error: '. $title;
-        // }
-
-        // $message = $options['message'];
-
-        // Alert::createAlert($title, $message, 'Transaction', $options['user'], $options['errors']);
-    }
-    public static function newTransaction2($options)
-    {
-        $defaultOptions = [
-            'type' => null,
-            'date' => null,
-            'amount' => 0,
-            'currency' => null,
-            'message' => null,
-            'source_name' => null,
-            'destination_name' => null,
-            'errors' => [],
-            'user' => null,
-        ];
-        $options = array_merge($defaultOptions, $options);
-        
-        if(is_numeric($options['amount'])){
-            $options['amount'] = number_format($options['amount'], 2);
-            $options['amount'] = str_replace('.00','',$options['amount']);
+        if(json_last_error() != JSON_ERROR_NONE){
+            $notes = null;
         }
 
+        if(is_numeric($transaction['amount'])){
+            $transaction['amount'] = number_format($transaction['amount'], 2);
+            $transaction['amount'] = str_replace('.00','',$transaction['amount']);
+        }
 
-        $title = $options['amount'].$options['currency'];
-
-        if($options['type'] == 'withdrawal'){
-            $title .= ' To '. $options['destination_name'];
-        }elseif($options['type'] == 'deposit'){
-            $title .= ' From: '. $options['source_name'];
+        if($transaction['type'] == 'withdrawal'){
+            $title = 'Purchase: ' . $transaction['amount'] . ' ' . $transaction['currency_symbol'] . ' ' . $transaction['destination_name'];
+        }elseif($transaction['type'] == 'deposit'){
+            $title = 'Deposit: ' . $transaction['amount'] . ' ' . $transaction['currency_symbol'] . ' ' . $transaction['source_name'];
         }else{
-            $title .= ' ' . $options['source_name'].' to '.$options['destination_name'];
-        }
-        if($options['errors']){
-            $title = 'Error: '. $title;
+            $title = 'Transfer: ' . $transaction['amount'] . ' ' . $transaction['currency_symbol'] . ' ' . $transaction['source_name'] .' to '.$transaction['destination_name'];
         }
 
-        $message = $options['message'];
+        $message = null;
 
-        Alert::createAlert($title, $message, 'Transaction', $options['user'], $options['errors']);
+        if(isset($budget->attributes) && isset($budget->attributes->spent[0])){
+            $remaining = number_format($budget->attributes->auto_budget_amount+$budget->attributes->spent[0]->sum,0);
+            $message = 'Budget: ' . $budget->name . ' Remaining: ' . $remaining . ' ' . $budget->auto_budget_currency_code;
+        }
+        if($message) $message .= "\n\n";
+
+        if($notes && isset($notes->message)){
+            $message = $notes->message;
+        }else{
+            $message = $transaction['description'];
+        }
+
+        $user_id = null;
+        if($notes && isset($notes->user_id)){
+            $user_id = $notes->user_id;
+        }
+        // if($transaction['errors']){
+            // $title = 'Error: '. $title;
+        // }
+        Alert::createAlert($title, $message, 'Transaction', $user_id);
     }
 
     public static function info($title, $message, $user = null){
