@@ -74,7 +74,7 @@ class AccountResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('FF_account_name')
+                Tables\Columns\TextColumn::make('FF_account_id')
                 ->label('Firefly-III Account')
                 ->formatStateUsing(function (Model $record){
                     if(!static::$ffaccounts){
