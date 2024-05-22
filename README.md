@@ -12,7 +12,7 @@ Utilize [SMSReceiver-iOS](https://github.com/mrahmadt/SMSReceiver-iOS) to seamle
 - Create transaction in FireFly
 
 
-![SMS2Transaction](https://github.com/mrahmadt/smartMoney/assets/957921/427f90ef-8daa-4bc6-8403-08d6a4855587)
+![SMS2Transaction](https://github.com/mrahmadt/smartMoney/assets/957921/6a07c029-9d71-49f8-a427-655c91d44c96)
 
 
 
