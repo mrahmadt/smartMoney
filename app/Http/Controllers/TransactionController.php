@@ -71,8 +71,8 @@ class TransactionController extends Controller
         $fireflyIII = new fireflyIII();
         
         $filter = [];
-        if(Auth::user()->budgets != '' && Auth::user()->accessAllBudgets == 0){
-            $filter['budget_id'] = explode(',', Auth::user()->budgets);
+        if(Auth::user()->budgets!='' && is_array(Auth::user()->budgets)){
+            $filter['budget_id'] = Auth::user()->budgets;
         }
 
         $transactions = $fireflyIII->getTransactions($start, $end, $filter);

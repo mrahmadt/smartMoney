@@ -12,12 +12,16 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use PhpParser\Node\Expr\AssignOp\Mod;
+use App\Helpers\fireflyIII;
+use Illuminate\Database\Eloquent\Model;
 
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
+    protected static $ffbudgets = [];
 
     public static function form(Form $form): Form
     {
@@ -30,19 +34,22 @@ class UserResource extends Resource
                     ->email()
                     ->required()
                     ->maxLength(255),
-                // Forms\Components\DateTimePicker::make('email_verified_at'),
                 Forms\Components\TextInput::make('password')
                     ->password()
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('budgets')
-                    ->maxLength(255),
-                Forms\Components\Toggle::make('accessAllBudgets')
-                    ->required(),
-                // Forms\Components\TextInput::make('accounts')
-                    // ->maxLength(255),
-                // Forms\Components\Toggle::make('accessAllAccounts')
-                    // ->required(),
+                Forms\Components\Select::make('budgets')
+                    ->multiple()
+                    ->options(function (){
+                        $budgets = [];
+                        $firefly = new fireflyIII();
+                        $ffbudgets = $firefly->getBudgets(limit: 300);
+                        foreach($ffbudgets->data as $budget){
+                            $budgets[$budget->id] = $budget->attributes->name;
+                        }
+                        return $budgets;
+                    })
+                    ,
                 Forms\Components\Toggle::make('is_admin')
                     ->required(),
                 Forms\Components\Toggle::make('alertViaEmail')
@@ -65,28 +72,21 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('email')
                 ->toggleable(isToggledHiddenByDefault: true)
                     ->searchable(),
-                // Tables\Columns\TextColumn::make('email_verified_at')
-                //     ->dateTime()
-                //     ->toggleable(isToggledHiddenByDefault: true)
-                //     ->sortable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('budgets')
-                    ->searchable(),
-                Tables\Columns\IconColumn::make('accessAllBudgets')
-                    ->boolean(),
-                // Tables\Columns\TextColumn::make('accounts')
-                // ->toggleable(isToggledHiddenByDefault: true)
-                //     ->searchable(),
-                // Tables\Columns\IconColumn::make('accessAllAccounts')
-                // ->toggleable(isToggledHiddenByDefault: true)
-                //     ->boolean(),
+                    ->formatStateUsing(function (Model $record){
+                        if(!is_array($record->budgets)) return '-';
+                        if(!static::$ffbudgets){
+                            $fireflyIII = new fireflyIII();
+                            static::$ffbudgets = $fireflyIII->getBudgets(limit: 500);
+                        }
+                        $names = [];
+                        foreach(static::$ffbudgets->data as $ffbudgets){
+                            if(in_array($ffbudgets->id, $record->budgets)){
+                                $names[] = $ffbudgets->attributes->name;
+                            }
+                        }
+                        return implode(', ', $names);
+                    }),
                 Tables\Columns\IconColumn::make('is_admin')
                     ->boolean(),
                 Tables\Columns\IconColumn::make('alertViaEmail')
@@ -100,6 +100,15 @@ class UserResource extends Resource
                 Tables\Columns\IconColumn::make('alertAbnormalTransaction')
                     ->label('Alert Abnormal Trans')
                     ->boolean(),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('updated_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
             ])
             ->filters([
                 //

@@ -30,13 +30,11 @@ class BudgetController extends Controller
         $budgets_all = $firefly->getBudget(null, $start, $end);
 
         $budgets = [];
-        if(Auth::user()->accessAllBudgets == 1){
-            $budgets = $budgets_all->data;
-        }elseif(Auth::user()->budgets!=''){
-            $only_budgets = explode(',', Auth::user()->budgets);
-            if(count($only_budgets) == 1) return Redirect::to('/budgets/'.$only_budgets[0] . '/' . $start . '/' . $end);
+        if(Auth::user()->budgets!=''){
+            $user_budgets = Auth::user()->budgets;
+            if(count($user_budgets) == 1) return Redirect::to('/budgets/'.$user_budgets[0] . '/' . $start . '/' . $end);
             foreach($budgets_all->data as $budget){
-                if(in_array($budget->id, $only_budgets)){
+                if(is_array($user_budgets->budget_id) && in_array($budget->id, $user_budgets)){
                     $budgets[] = $budget;
                 }
             }

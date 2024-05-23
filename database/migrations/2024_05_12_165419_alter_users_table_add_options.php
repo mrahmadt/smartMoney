@@ -13,10 +13,7 @@ return new class extends Migration
     {
         Schema::table('users', function(Blueprint $table)
         {
-            $table->string('budgets')->nullable();
-            $table->boolean('accessAllBudgets')->default(false);
-            $table->string('accounts')->nullable();
-            $table->boolean('accessAllAccounts')->default(false);
+            $table->json('budgets')->nullable();
             $table->boolean('alertViaEmail')->default(true);
             $table->boolean('alertNewBillCreation')->default(true);
             $table->boolean('alertBillOverAmountPercentage')->default(true);
@@ -32,9 +29,6 @@ return new class extends Migration
     {
         Schema::table('users', function(Blueprint $table){
             $table->dropColumn('budgets');
-            $table->dropColumn('accessAllBudgets');
-            $table->dropColumn('accounts');
-            $table->dropColumn('accessAllAccounts');
             $table->dropColumn('alertViaEmail');
             $table->dropColumn('alertNewBillCreation');
             $table->dropColumn('alertBillOverAmountPercentage');
