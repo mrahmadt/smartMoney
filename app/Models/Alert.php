@@ -39,6 +39,9 @@ class Alert extends Model
         if(json_last_error() != JSON_ERROR_NONE){
             $notes = null;
         }
+        if($notes && isset($notes->sendTransactionAlert) && $notes->sendTransactionAlert == false){
+            return false;
+        }
 
         if(is_numeric($transaction['amount'])){
             $transaction['amount'] = number_format($transaction['amount'], 2);
@@ -84,14 +87,14 @@ class Alert extends Model
     public static function abnormalTransaction($item, $transaction, $percentage,$averageTransaction, $user = null){
         $itemName = null;
         if($item == 'source' || $item == 'destination'){
-            $itemName = 'account ' . $transaction[$item.'_name'];
+            $itemName = 'account "' . $transaction[$item.'_name'] . '"';
         }elseif($item == 'all'){
             $itemName = 'all transactions';
         }elseif($item == 'category'){
-            $itemName = 'category '  . $transaction[$item];
+            $itemName = 'category "'  . $transaction[$item] . '"';
         }
 
-        $message = 'Transaction: '.$transaction['description'].' has an abnormal amount of '.$transaction['amount'].' '.$transaction['currency_symbol'].' ('.$percentage.'%) compared to the average amount of ' . $averageTransaction->average_amount . ' for ' . $itemName . ' ('.$transaction['type'].')';
+        $message = 'Transaction: "'.$transaction['description'].'" has an abnormal amount of '.$transaction['amount'].' '.$transaction['currency_symbol'].' ('.$percentage.'%) compared to the average amount of ' . $averageTransaction->average_amount . ' for ' . $itemName . ' ('.$transaction['type'].')';
         Alert::createAlert('Abnormal Transaction', $message, 'Info', $user);
     }
 

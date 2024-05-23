@@ -63,7 +63,7 @@ class accountSeeder extends Seeder
                 'account_code' => '6484',
                 'sms_sender' => 'saib',
                 'budget_id' => 1,
-                'alertNewTransactions' => true,
+                'sendTransactionAlert' => true,
                 'user_id' => 2,
             ],
             [
@@ -72,7 +72,7 @@ class accountSeeder extends Seeder
                 'account_code' => '7660',
                 'sms_sender' => 'saib',
                 'budget_id' => 1,
-                'alertNewTransactions' => true,
+                'sendTransactionAlert' => true,
                 'user_id' => 2,
             ],
             [
@@ -182,7 +182,7 @@ class accountSeeder extends Seeder
                     'budget_id' => $values['budget_id'] ?? null,
                     'user_id' => $values['user_id'] ?? null,
                     'defaultAccount' => $values['defaultAccount'] ?? false,
-                    'alertNewTransactions' => $values['alertNewTransactions'] ?? false,
+                    'sendTransactionAlert' => $values['sendTransactionAlert'] ?? false,
                 ]);
         }
     }

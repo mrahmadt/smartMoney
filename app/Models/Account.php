@@ -16,7 +16,6 @@ class Account extends Model
         'account_code',
         'sms_sender',
         'budget_id',
-        'alertNewTransactions',
         'user_id',
         'defaultAccount',
         'tags',
@@ -32,8 +31,7 @@ class Account extends Model
     protected function casts(): array
     {
         return [
-            'alertNewTransactions' => 'boolean',
-            // 'alertAbnormalTransaction' => 'boolean',
+            'sendTransactionAlert' => 'boolean',
             'defaultAccount' => 'boolean',
             'tags' => 'array',
             'values' => 'array',

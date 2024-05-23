@@ -111,18 +111,16 @@ class createTransactionJob implements ShouldQueue
             if($accountSource) {
                 $transaction['source_id'] = $accountSource['FF_account']->id;
                 $transaction = $this->transactionOptions($transaction, $accountSource['account']);
-                // $alertNewTransaction['source_name'] = $accountSource['FF_account']->attributes->name ?? $this->data['source'];
-                // $alertNewTransaction['user'] = $accountSource['account']->user_id;
                 $transaction['notes']['account_id'] = $accountSource['account']->id;
                 $transaction['notes']['user_id'] = $accountSource['account']->user_id;
+                $transaction['notes']['sendTransactionAlert'] = $accountSource['account']->sendTransactionAlert;
             }else{
                 $defaultAccount = Account::where('sms_sender', $this->sms['sender'])->where('defaultAccount', true)->first();
                 if($defaultAccount){
                     $transaction['source_id'] = $defaultAccount->FF_account_id;
                     $transaction['notes']['account_id'] = $defaultAccount['account']->id;
                     $transaction['notes']['user_id'] = $defaultAccount['account']->user_id;
-                    // $alertNewTransaction['user'] = $defaultAccount['account']->user_id;
-                    // $alertNewTransaction['source_name'] = $this->data['source'];
+                    $transaction['notes']['sendTransactionAlert'] = $defaultAccount['account']->sendTransactionAlert;
                     $transaction = $this->transactionOptions($transaction, $defaultAccount);
                 }else{
                     $error['messages'][] = 'Source account not found and no default account set';
@@ -132,11 +130,9 @@ class createTransactionJob implements ShouldQueue
             $accountDestination = $this->fireflyIII->getAccountByName($this->data['destination'], 'expense');
             if(isset($accountDestination->id) && $accountDestination->id != $transaction['source_id']) {
                 $transaction['destination_id'] = $accountDestination->id;
-                // $alertNewTransaction['destination_name'] = $accountDestination->attributes->name ?? $this->data['destination'];
                 $newAccountName = Account::isReplaceWithFFAccount($accountDestination);
                 if($newAccountName){
                     $transaction['destination_name'] = $newAccountName;
-                    // $alertNewTransaction['destination_name'] = $newAccountName;
                     $transaction['destination_id'] = null;
                 }
             }else{
@@ -150,20 +146,17 @@ class createTransactionJob implements ShouldQueue
             if($accountDestination) {
                 $transaction['destination_id'] = $accountDestination['FF_account']->id;
                 $transaction = $this->transactionOptions($transaction, $accountDestination['account']);
-                // $alertNewTransaction['destination_name'] = $accountDestination['FF_account']->attributes->name ?? $this->data['destination'];
-                // $alertNewTransaction['user'] = $accountDestination['account']->user_id;
                 $transaction['notes']['account_id'] = $accountDestination['account']->id;
                 $transaction['notes']['user_id'] = $accountDestination['account']->user_id;
+                $transaction['notes']['sendTransactionAlert'] = $accountDestination['account']->sendTransactionAlert;
 
             }else{
                 $defaultAccount = Account::where('sms_sender', $this->sms['sender'])->where('defaultAccount', true)->first();
                 if($defaultAccount){
                     $transaction['destination_id'] = $defaultAccount->FF_account_id;
-                    // $alertNewTransaction['destination_name'] = $this->data['source'];
-                    // $alertNewTransaction['user'] = $defaultAccount['account']->user_id;
-
                     $transaction['notes']['account_id'] = $defaultAccount['account']->id;
                     $transaction['notes']['user_id'] = $defaultAccount['account']->user_id;
+                    $transaction['notes']['sendTransactionAlert'] = $defaultAccount['account']->sendTransactionAlert;
     
                     $transaction = $this->transactionOptions($transaction, $defaultAccount);
                 }else{
@@ -192,9 +185,8 @@ class createTransactionJob implements ShouldQueue
                 $transaction['source_id'] = $accountSource['FF_account']->id;
                 $transaction['notes']['account_id'] = $accountSource['account']->id;
                 $transaction['notes']['user_id'] = $accountSource['account']->user_id;
+                $transaction['notes']['sendTransactionAlert'] = $accountSource['account']->sendTransactionAlert;
                 $transaction = $this->transactionOptions($transaction, $accountSource['account']);
-                // $alertNewTransaction['source_name'] = $accountSource['FF_account']->attributes->name ?? $this->data['source'];
-                // $alertNewTransaction['user'] = $accountSource['account']->user_id;
             }else{
                 $error['messages'][] = 'Source account not found';
             }

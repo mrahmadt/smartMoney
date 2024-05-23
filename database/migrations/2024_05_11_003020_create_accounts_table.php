@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('account_code')->nullable();
             $table->string('sms_sender')->nullable();
             $table->bigInteger('budget_id')->nullable();
-            $table->boolean('alertNewTransactions')->default(true);
+            $table->boolean('sendTransactionAlert')->default(true);
             $table->foreignId('user_id')->nullable()->index();
             $table->boolean('defaultAccount')->default(false);
             $table->json('tags')->nullable();
