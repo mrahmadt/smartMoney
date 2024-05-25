@@ -118,9 +118,9 @@ class createTransactionJob implements ShouldQueue
                 $defaultAccount = Account::where('sms_sender', $this->sms['sender'])->where('defaultAccount', true)->first();
                 if($defaultAccount){
                     $transaction['source_id'] = $defaultAccount->FF_account_id;
-                    $transaction['notes']['account_id'] = $defaultAccount['account']->id;
-                    $transaction['notes']['user_id'] = $defaultAccount['account']->user_id;
-                    $transaction['notes']['sendTransactionAlert'] = $defaultAccount['account']->sendTransactionAlert;
+                    $transaction['notes']['account_id'] = $defaultAccount->id;
+                    $transaction['notes']['user_id'] = $defaultAccount->user_id;
+                    $transaction['notes']['sendTransactionAlert'] = $defaultAccount->sendTransactionAlert;
                     $transaction = $this->transactionOptions($transaction, $defaultAccount);
                 }else{
                     $error['messages'][] = 'Source account not found and no default account set';
@@ -154,9 +154,9 @@ class createTransactionJob implements ShouldQueue
                 $defaultAccount = Account::where('sms_sender', $this->sms['sender'])->where('defaultAccount', true)->first();
                 if($defaultAccount){
                     $transaction['destination_id'] = $defaultAccount->FF_account_id;
-                    $transaction['notes']['account_id'] = $defaultAccount['account']->id;
-                    $transaction['notes']['user_id'] = $defaultAccount['account']->user_id;
-                    $transaction['notes']['sendTransactionAlert'] = $defaultAccount['account']->sendTransactionAlert;
+                    $transaction['notes']['account_id'] = $defaultAccount->id;
+                    $transaction['notes']['user_id'] = $defaultAccount->user_id;
+                    $transaction['notes']['sendTransactionAlert'] = $defaultAccount->sendTransactionAlert;
     
                     $transaction = $this->transactionOptions($transaction, $defaultAccount);
                 }else{
