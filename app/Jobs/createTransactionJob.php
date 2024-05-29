@@ -127,18 +127,19 @@ class createTransactionJob implements ShouldQueue
                 }
             }
 
-            $accountDestination = $this->fireflyIII->getAccountByName($this->data['destination'], 'expense');
-            if(isset($accountDestination->id) && $accountDestination->id != $transaction['source_id']) {
-                $transaction['destination_id'] = $accountDestination->id;
-                $newAccountName = Account::isReplaceWithFFAccount($accountDestination);
-                if($newAccountName){
-                    $transaction['destination_name'] = $newAccountName;
-                    $transaction['destination_id'] = null;
+            if(!$error['messages']){
+                $accountDestination = $this->fireflyIII->getAccountByName($this->data['destination'], 'expense');
+                if(isset($accountDestination->id) && $accountDestination->id != $transaction['source_id']) {
+                    $transaction['destination_id'] = $accountDestination->id;
+                    $newAccountName = Account::isReplaceWithFFAccount($accountDestination);
+                    if($newAccountName){
+                        $transaction['destination_name'] = $newAccountName;
+                        $transaction['destination_id'] = null;
+                    }
+                }else{
+                    $transaction['destination_name'] = $this->data['destination'];
                 }
-            }else{
-                $transaction['destination_name'] = $this->data['destination'];
             }
-
             
 
         }elseif($this->data['transactionType'] == 'deposit'){
@@ -163,19 +164,20 @@ class createTransactionJob implements ShouldQueue
                     $error['messages'][] = 'destination account not found and no default account set';
                 }
             }
-            
-            $accountSource = $this->fireflyIII->getAccountByName($this->data['source'], 'revenue');
-            if(isset($accountSource->id) && $accountSource->id != $transaction['destination_id']) {
-                $transaction['source_id'] = $accountSource->id;
-                // $alertNewTransaction['source_name'] = $accountSource->attributes->name ?? $this->data['source'];
-                $newAccountName = Account::isReplaceWithFFAccount($accountSource);
-                if($newAccountName){
-                    $transaction['source_name'] = $newAccountName;
-                    $transaction['source_id'] = null;
-                    // $alertNewTransaction['source_name'] = $newAccountName;
+            if(!$error['messages']){
+                $accountSource = $this->fireflyIII->getAccountByName($this->data['source'], 'revenue');
+                if(isset($accountSource->id) && $accountSource->id != $transaction['destination_id']) {
+                    $transaction['source_id'] = $accountSource->id;
+                    // $alertNewTransaction['source_name'] = $accountSource->attributes->name ?? $this->data['source'];
+                    $newAccountName = Account::isReplaceWithFFAccount($accountSource);
+                    if($newAccountName){
+                        $transaction['source_name'] = $newAccountName;
+                        $transaction['source_id'] = null;
+                        // $alertNewTransaction['source_name'] = $newAccountName;
+                    }
+                }else{
+                    $transaction['source_name'] = $this->data['source'];
                 }
-            }else{
-                $transaction['source_name'] = $this->data['source'];
             }
 
 
@@ -190,19 +192,19 @@ class createTransactionJob implements ShouldQueue
             }else{
                 $error['messages'][] = 'Source account not found';
             }
-
-            $accountDestination = Account::lookupAccountByCode($this->sms['sender'], $this->data['destination']);
-
-            if($accountDestination) {
-                if($accountDestination['FF_account']->id != $transaction['source_id']){
-                $transaction['destination_id'] = $accountDestination['FF_account']->id;
-                $transaction = $this->transactionOptions($transaction, $accountDestination['account']);
-                // $alertNewTransaction['destination_name'] = $accountDestination['FF_account']->attributes->name ?? $this->data['destination'];
+            if(!$error['messages']){
+                $accountDestination = Account::lookupAccountByCode($this->sms['sender'], $this->data['destination']);
+                if($accountDestination) {
+                    if($accountDestination['FF_account']->id != $transaction['source_id']){
+                    $transaction['destination_id'] = $accountDestination['FF_account']->id;
+                    $transaction = $this->transactionOptions($transaction, $accountDestination['account']);
+                    // $alertNewTransaction['destination_name'] = $accountDestination['FF_account']->attributes->name ?? $this->data['destination'];
+                    }else{
+                        $error['messages'][] = 'Source and destination account are the same';
+                    }
                 }else{
-                    $error['messages'][] = 'Source and destination account are the same';
+                    $error['messages'][] = 'Destination account not found';
                 }
-            }else{
-                $error['messages'][] = 'Destination account not found';
             }
         }
 
