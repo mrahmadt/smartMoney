@@ -163,7 +163,7 @@ class parseSMS {
         if(isset($data['config']['replace'])){
             foreach ($data['config']['replace'] as $field => $fieldValues) {
                 // if field value is set and field in $fieldValues then replace it value
-                if(isset($fieldValues[$data[$field]]) && in_array($fieldValues[$data[$field]], $fieldValues)){
+                if(isset($data[$field]) && isset($fieldValues[$data[$field]]) && in_array($fieldValues[$data[$field]], $fieldValues)){
                     $value = $fieldValues[$data[$field]];
                     // if $value is a variable (starts with $) then replace it with the value of the variable
                     if(substr($value, 0, 1) == '$'){
