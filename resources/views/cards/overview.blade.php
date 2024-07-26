@@ -1,3 +1,4 @@
+@isset($budget)
 @php
 if(isset($budget->attributes->spent[0])) {
     $remaining = number_format($budget->attributes->auto_budget_amount+$budget->attributes->spent[0]->sum,0);
@@ -66,3 +67,4 @@ if($remaining < 0){
     var budgetSpendingChart_ctx = document.getElementById("budgetSpendingChart").getContext("2d");
     var budgetSpendingChart = new Chart(budgetSpendingChart_ctx, budgetSpendingChart_config);
 </script>
+@endisset

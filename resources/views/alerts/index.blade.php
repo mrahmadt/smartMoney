@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Alerts')
 @section('content')
+@include('cards.overview')
 <div class="bg-gray-200 pt-2 w-full">
 
 @php

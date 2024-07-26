@@ -34,7 +34,7 @@ class BudgetController extends Controller
             $user_budgets = Auth::user()->budgets;
             if(count($user_budgets) == 1) return Redirect::to('/budgets/'.$user_budgets[0] . '/' . $start . '/' . $end);
             foreach($budgets_all->data as $budget){
-                if(is_array($user_budgets->budget_id) && in_array($budget->id, $user_budgets)){
+                if(in_array($budget->id, $user_budgets)){
                     $budgets[] = $budget;
                 }
             }

@@ -71,13 +71,21 @@ class TransactionController extends Controller
         $fireflyIII = new fireflyIII();
         
         $filter = [];
+        $budget_id = null;
+        $budget = null;
         if(Auth::user()->budgets!='' && is_array(Auth::user()->budgets)){
             $filter['budget_id'] = Auth::user()->budgets;
+            $budget_id = Auth::user()->budgets[0];
+        }
+        if($budget_id){
+            $budget = $fireflyIII->getBudget($budget_id, $start, $end);
+            $budget = $budget->data;
         }
 
-        $transactions = $fireflyIII->getTransactions($start, $end, $filter);
+        $limit = 20;
+        $transactions = $fireflyIII->getTransactions($start, $end, $filter, $limit);
         if(isset($transactions->data)) $transactions = $transactions->data;
-        return view('transaction.index', ['apiToken'=>$apiToken, 'transactions'=>$transactions,'range'=>$range]);
+        return view('transaction.index', ['apiToken'=>$apiToken, 'transactions'=>$transactions,'range'=>$range, 'budget' => $budget]);
 
     }
 }

@@ -69,8 +69,20 @@ class AlertController extends Controller
             $apiToken = Auth::user()->generateToken('api-token', true, 'apiToken');
         }
 
-        $alerts = Alert::where(['user_id'=> Auth::User()->id])->orderBy('id','DESC')->limit(100)->get();
-        return view('alerts.index', ['alerts'=>$alerts]);
+        $start = date('Y-m-01');
+        $end = date('Y-m-t');
+        $fireflyIII = new fireflyIII();
+        $budget_id = null;
+        $budget = null;
+        if(Auth::user()->budgets!='' && is_array(Auth::user()->budgets)){
+            $budget_id = Auth::user()->budgets[0];
+        }
+        if($budget_id){
+            $budget = $fireflyIII->getBudget($budget_id, $start, $end);
+            $budget = $budget->data;
+        }
+        $alerts = Alert::where(['user_id'=> Auth::User()->id])->orderBy('id','DESC')->limit(20)->get();
+        return view('alerts.index', ['alerts'=>$alerts, 'budget' => $budget]);
         
     }
 }

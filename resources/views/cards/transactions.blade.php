@@ -1,5 +1,5 @@
 <div class="pt-2"><div x-data="{ TransactionsExpanded: $persist(1) }" class="shadow-lg mx-2 h-100 rounded-md border border-gray-300 bg-white px-4 pt-2 pb-4" :class="TransactionsExpanded ? 'pb-4' : 'pb-1'">
-    <div @click="TransactionsExpanded = ! TransactionsExpanded"  class="text-lg text-gray-800 font-bold" :class="TransactionsExpanded ? 'mb-4' : 'mb-1'">Last 50 transactions</div>
+    <div @click="TransactionsExpanded = ! TransactionsExpanded"  class="text-lg text-gray-800 font-bold" :class="TransactionsExpanded ? 'mb-4' : 'mb-1'">Last 20 transactions</div>
     <div x-show="TransactionsExpanded" x-collapse>
         @php
         $counter = 0;
