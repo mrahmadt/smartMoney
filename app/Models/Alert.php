@@ -49,11 +49,11 @@ class Alert extends Model
         }
 
         if($transaction['type'] == 'withdrawal'){
-            $title = 'Purchase: ' . $transaction['amount'] . ' ' . $transaction['currency_symbol'] . ' ' . $transaction['destination_name'];
+            $title = '-' . $transaction['amount'] . ' ' . $transaction['currency_symbol'] . ' ' . $transaction['destination_name'];
         }elseif($transaction['type'] == 'deposit'){
-            $title = 'Deposit: ' . $transaction['amount'] . ' ' . $transaction['currency_symbol'] . ' ' . $transaction['source_name'];
+            $title = '+' . $transaction['amount'] . ' ' . $transaction['currency_symbol'] . ' ' . $transaction['source_name'];
         }else{
-            $title = 'Transfer: ' . $transaction['amount'] . ' ' . $transaction['currency_symbol'] . ' ' . $transaction['source_name'] .' to '.$transaction['destination_name'];
+            $title = $transaction['amount'] . ' ' . $transaction['currency_symbol'] . ' ' . $transaction['source_name'] .' to '.$transaction['destination_name'];
         }
 
         $message = null;
