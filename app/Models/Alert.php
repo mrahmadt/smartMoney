@@ -23,6 +23,11 @@ class Alert extends Model
         'message',
         'type',
     ];
+    public static function test()
+    {
+        echo __('alert.abnormalTransactionAccount', ['account' => 'test']);
+        exit;
+    }
     public static function newTransaction($transaction)
     {
         $fireflyIII = new fireflyIII();
@@ -49,25 +54,25 @@ class Alert extends Model
         }
 
         if($transaction['type'] == 'withdrawal'){
-            $title = '-' . $transaction['amount'] . ' ' . $transaction['currency_symbol'] . ' ' . $transaction['destination_name'];
+            $title = __('alert.newTransactionTitle_withdrawal', ['amount' => $transaction['amount'], 'currency_symbol' => $transaction['currency_symbol'], 'destination_name' => $transaction['destination_name']]);
         }elseif($transaction['type'] == 'deposit'){
-            $title = '+' . $transaction['amount'] . ' ' . $transaction['currency_symbol'] . ' ' . $transaction['source_name'];
+            $title = __('alert.newTransactionTitle_deposit', ['amount' => $transaction['amount'], 'currency_symbol' => $transaction['currency_symbol'], 'source_name' => $transaction['source_name']]);
         }else{
-            $title = $transaction['amount'] . ' ' . $transaction['currency_symbol'] . ' ' . $transaction['source_name'] .' to '.$transaction['destination_name'];
+            $title = __('alert.newTransactionTitle_transfer', ['amount' => $transaction['amount'], 'currency_symbol' => $transaction['currency_symbol'], 'source_name' => $transaction['source_name'], 'destination_name' => $transaction['destination_name']]);
         }
+
 
         $message = null;
 
         if(isset($budget->attributes) && isset($budget->attributes->spent[0])){
             $remaining = number_format($budget->attributes->auto_budget_amount+$budget->attributes->spent[0]->sum,0);
-            $message = 'Budget: ' . $budget->name . ' Remaining: ' . $remaining . ' ' . $budget->auto_budget_currency_code;
+            $message = __('alert.newTransactionMessage_Budget', ['budget' => $budget->name, 'remaining' => $remaining, 'currency_code' => $budget->auto_budget_currency_code]);
         }
-        if($message) $message .= "\n\n";
 
         if($notes && isset($notes->message)){
-            $message = $notes->message;
+            $message = __('alert.newTransactionMessage', ['description' => $notes->message]);
         }else{
-            $message = $transaction['description'];
+            $message = __('alert.newTransactionMessage', ['description' => $transaction['description']]);
         }
 
         $user_id = null;
@@ -87,20 +92,20 @@ class Alert extends Model
     public static function abnormalTransaction($item, $transaction, $percentage,$averageTransaction, $user = null){
         $itemName = null;
         if($item == 'source' || $item == 'destination'){
-            $itemName = 'account "' . $transaction[$item.'_name'] . '"';
+            $itemName = __('alert.abnormalTransactionAccount', ['account' => $transaction[$item.'_name']]);
         }elseif($item == 'all'){
-            $itemName = 'all transactions';
+            $itemName = __('alert.abnormalTransactionAllTransactions');
         }elseif($item == 'category'){
-            $itemName = 'category "'  . $transaction[$item] . '"';
+            $itemName = __('alert.abnormalTransactionCategory', ['category' => $transaction[$item]]);
         }
 
-        $message = 'Transaction: "'.$transaction['description'].'" has an abnormal amount of '.$transaction['amount'].' '.$transaction['currency_symbol'].' ('.$percentage.'%) compared to the average amount of ' . $averageTransaction->average_amount . ' for ' . $itemName . ' ('.$transaction['type'].')';
-        Alert::createAlert('Abnormal Transaction', $message, 'Info', $user);
+        $message = __('alert.abnormalTransactionMessage', ['description' => $transaction['description'], 'amount' => $transaction['amount'], 'currency_symbol' => $transaction['currency_symbol'], 'percentage' => $percentage, 'average_amount' => $averageTransaction->average_amount, 'itemName' => $itemName, 'type' => $transaction['type']]);
+        Alert::createAlert(__('alert.abnormalTransactionTitle'), $message, 'Info', $user);
     }
 
     public static function billOverMaxAmount($bill, $transaction, $billPercentage, $user = null){
-        $message = 'Bill: '.$bill->attributes->name.' has a max amount of '.$bill->attributes->amount_max.' '.$transaction->currency_symbol.' and you have spent '.$transaction->amount.' '.$transaction->currency_symbol.' ('.$billPercentage.'%)';
-        Alert::createAlert('Bill Over Max Amount', $message, 'Info', $user);
+        $message = __('alert.billOverMaxAmountMessage', ['bill' => $bill->attributes->name, 'maxAmount' => $bill->attributes->amount_max, 'amount' => $transaction->amount, 'currency_symbol' => $transaction->currency_symbol, 'billPercentage' => $billPercentage]);
+        Alert::createAlert(__('alert.billOverMaxAmountTitle'), $message, 'Info', $user);
     }
 
     public static function createAlert($title, $message, $type = 'info', $user = null, $error = [])
