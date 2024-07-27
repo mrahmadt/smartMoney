@@ -53,7 +53,11 @@ class createTransactionJob implements ShouldQueue
             'internal_reference' => $this->data['internal_reference'],
             'tags' => [],
         ];
-        
+
+        if(isset($this->data['fees']) && is_numeric($this->data['fees'])){
+            $transaction['amount'] = $this->data['amount'] + $this->data['fees'];
+        }
+
         if(isset($this->data['currency'])){
 
             $currency = $this->fireflyIII->getCurrency($this->data['currency']);
@@ -70,6 +74,11 @@ class createTransactionJob implements ShouldQueue
             }else{
                 $transaction['currency_code'] = $currency->data->attributes->code;
             }
+            if(isset($currency->data->attributes->default) && $currency->data->attributes->default == false){
+                $transaction['foreign_currency_code'] = $currency->data->attributes->code;
+                $transaction['foreign_amount'] = $this->data['currency'];
+            }
+
         }
 
         if(isset($this->data['tags'])){
@@ -88,9 +97,7 @@ class createTransactionJob implements ShouldQueue
             $transaction['category_name'] = $this->data['category'];
         }
 
-        if(isset($this->data['fees']) && is_numeric($this->data['fees'])){
-            $transaction['amount'] = $this->data['amount'] + $this->data['fees'];
-        }
+
 
         // $alertNewTransaction = [
         //     'type' => $this->data['transactionType'],
