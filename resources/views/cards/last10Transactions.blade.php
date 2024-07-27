@@ -1,5 +1,5 @@
 <div x-data="{ LastTransactionsExpanded: $persist(1) }" class="shadow-lg mx-2 my-2 h-100 rounded-md border border-gray-300 bg-white mt-2 px-4 pt-2 pb-4" :class="LastTransactionsExpanded ? 'pb-4' : 'pb-1'">
-    <div @click="LastTransactionsExpanded = ! LastTransactionsExpanded"  class="text-lg text-gray-800 font-bold" :class="LastTransactionsExpanded ? 'mb-4' : 'mb-1'">Last 10 transactions</div>
+    <div @click="LastTransactionsExpanded = ! LastTransactionsExpanded"  class="text-lg text-gray-800 font-bold" :class="LastTransactionsExpanded ? 'mb-4' : 'mb-1'">{{__('cards.Last10transactions')}}</div>
     <div x-show="LastTransactionsExpanded" x-collapse>
         @php
         $counter = 0;

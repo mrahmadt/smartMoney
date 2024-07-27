@@ -1,5 +1,5 @@
 <div x-data="{ TopTransactionsExpanded: $persist(1) }" class="shadow-lg mx-2 h-100 rounded-md border border-gray-300 bg-white px-4 pt-2" :class="TopTransactionsExpanded ? 'pb-4' : 'pb-1'">
-    <div @click="TopTransactionsExpanded = ! TopTransactionsExpanded" class="text-lg text-gray-800 font-bold" :class="TopTransactionsExpanded ? 'mb-4' : 'mb-1'">Top transactions</div>
+    <div @click="TopTransactionsExpanded = ! TopTransactionsExpanded" class="text-lg text-gray-800 font-bold" :class="TopTransactionsExpanded ? 'mb-4' : 'mb-1'">{{__('cards.Toptransactions')}}</div>
     <div x-show="TopTransactionsExpanded" x-collapse>
         @php
         foreach( $stats['topTransactions'] as $transaction) {

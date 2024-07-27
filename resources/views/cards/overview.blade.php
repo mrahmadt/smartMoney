@@ -30,9 +30,9 @@ if($remaining < 0){
 <div class="shadow-lg mx-2 rounded-md border border-gray-300 bg-white px-4 py-2">
     <div class="grid grid-flow-row-dense grid-cols-2 grid-rows-1">
       <div>
-        <div class="text-sm font-light text-gray-400 whitespace-nowrap">Remaining</div>
+        <div class="text-sm font-light text-gray-400 whitespace-nowrap">{{__('cards.Remaining')}}</div>
         <div class="text-4xl font-bold {{$remainingColor}} tabular-nums">{{$remaining}}</div>
-        <div class="text-sm text-gray-500">{{number_format($budget->attributes->auto_budget_amount,0)}} - Spent: <span class="text-red-500">{{$spentSum}}</span></div>
+        <div class="text-sm text-gray-500">{{number_format($budget->attributes->auto_budget_amount,0)}} - {{__('cards.Spent')}} <span class="text-red-500">{{$spentSum}}</span></div>
       </div>
       <div>
         <div style="width: 100px; height: 80px; float: right; position: relative;">

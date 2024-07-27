@@ -1,5 +1,5 @@
 <div x-data="{ spendingExpanded: $persist(1) }" class="shadow-lg mx-2 my-2 h-100 rounded-md border border-gray-300 bg-white mt-2 px-4 py-2">
-    <div @click="spendingExpanded = ! spendingExpanded" class="text-lg text-gray-800 font-bold">Spending</div>
+    <div @click="spendingExpanded = ! spendingExpanded" class="text-lg text-gray-800 font-bold">{{__('cards.Spending')}}</div>
     <div x-show="spendingExpanded" x-collapse><canvas  style="width: 100%;" id="spendingChart"></canvas></div>
   </div>
   <script>

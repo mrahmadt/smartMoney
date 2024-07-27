@@ -20,11 +20,11 @@
             <div x-html="transaction.notes" class="mb-2 border border-gray-400 p-2 shadow rounded-lg text-xs"></div>
             <div x-text="transaction.date" class="mb-2 text-sm text-gray-500 float-end">May 7th, 2024, @ 08:39:00</div>
 
-            <div class="font-bold text-sm text-gray-800">From: <span class="font-normal text-gray-800"
+            <div class="font-bold text-sm text-gray-800">{{__('cards.From')}} <span class="font-normal text-gray-800"
                     x-text="transaction.source_name"></span></div>
-            <div class="font-bold text-sm text-gray-800">To: <span class="font-normal text-gray-800" x-text="transaction.destination_name"></span></div>
+            <div class="font-bold text-sm text-gray-800">{{__('cards.To')}} <span class="font-normal text-gray-800" x-text="transaction.destination_name"></span></div>
             
-            <div class="font-bold text-sm text-gray-800">Amount: <span class="font-normal text-gray-800" x-text="transaction.amount"></span> <span class="font-normal text-gray-800" x-text="transaction.currency_symbol"></span></div>
+            <div class="font-bold text-sm text-gray-800">{{__('cards.Amount')}} <span class="font-normal text-gray-800" x-text="transaction.amount"></span> <span class="font-normal text-gray-800" x-text="transaction.currency_symbol"></span></div>
 
             <div x-text="transaction.budget_name" x-show="transaction.budget_name"
                 class="mt-2 text-xs font-semibold inline-block py-1 px-2 rounded-full text-indigo-600 bg-indigo-200 uppercase last:mr-0 mr-1">
