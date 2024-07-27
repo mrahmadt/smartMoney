@@ -76,7 +76,7 @@ class createTransactionJob implements ShouldQueue
             }
             if(isset($currency->data->attributes->default) && $currency->data->attributes->default == false){
                 $transaction['foreign_currency_code'] = $currency->data->attributes->code;
-                $transaction['foreign_amount'] = $this->data['currency'];
+                $transaction['foreign_amount'] = $transaction['amount'];
             }
 
         }
