@@ -14,9 +14,6 @@ use App\Helpers\func;
 
 class AlertController extends Controller
 {
-    public function test(Request $request){
-        Alert::test();
-    }
     public function create(Request $request)
     {
         $title = $request->input('title', 'Alert');

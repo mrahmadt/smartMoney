@@ -34,6 +34,5 @@ Route::get('/profile/generateAlertToken', [App\Http\Controllers\ProfileControlle
 Route::get('/alerts', [App\Http\Controllers\AlertController::class, 'index'])->middleware(['auth', 'verified'])->name('alerts');
 Route::get('/alerts/show/{id}', [App\Http\Controllers\AlertController::class, 'show'])->middleware(['auth', 'verified']);
 
-Route::get('/alerts/test', [App\Http\Controllers\AlertController::class, 'test']);
 
 require __DIR__.'/auth.php';

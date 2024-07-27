@@ -23,11 +23,6 @@ class Alert extends Model
         'message',
         'type',
     ];
-    public static function test()
-    {
-        echo __('alert.abnormalTransactionAccount', ['account' => 'test']);
-        exit;
-    }
     public static function newTransaction($transaction)
     {
         $fireflyIII = new fireflyIII();
