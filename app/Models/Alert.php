@@ -37,8 +37,13 @@ class Alert extends Model
         $notes = json_decode($transaction['notes']);
         // check if json is valid
         if(json_last_error() != JSON_ERROR_NONE){
-            $notes = null;
+            return false;
         }
+
+        if(!isset($notes->sendTransactionAlert)){
+            return false;
+        }
+
         if($notes && isset($notes->sendTransactionAlert) && $notes->sendTransactionAlert == false){
             return false;
         }
@@ -120,7 +125,7 @@ class Alert extends Model
                 }
             }
         }
-
+        if( $user_id == null ) return false;
         $alert = new Alert();
         $alert->title = $title;
         $alert->user_id = $user_id;
