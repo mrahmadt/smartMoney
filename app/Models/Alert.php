@@ -66,7 +66,7 @@ class Alert extends Model
 
         if(isset($budget->attributes) && isset($budget->attributes->spent[0])){
             $remaining = number_format($budget->attributes->auto_budget_amount+$budget->attributes->spent[0]->sum,0);
-            $message = __('alert.newTransactionMessage_Budget', ['budget' => $budget->name, 'remaining' => $remaining, 'currency_code' => $budget->auto_budget_currency_code]);
+            $message = __('alert.newTransactionMessage_Budget', ['budget' => $budget->attributes->name, 'remaining' => $remaining, 'currency_code' => $budget->attributes->auto_budget_currency_code]);
         }
 
         if($notes && isset($notes->message)){
