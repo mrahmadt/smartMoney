@@ -11,5 +11,5 @@ return [
     'From' => 'From:',
     'To' => 'To:',
     'Amount' => 'Amount:',
-
+    'Budget' => 'Budget:',
 ];

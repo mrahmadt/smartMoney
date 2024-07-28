@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Artisan;
 use App\Console\Commands\calAverageTransactions;
 use App\Console\Commands\billDetector;
 use App\Console\Commands\cleanSMS;
+use App\Console\Commands\sendReport;
 use Illuminate\Support\Facades\Schedule;
 // Artisan::command('inspire', function () {
 //     $this->comment(Inspiring::quote());
@@ -20,4 +21,7 @@ Schedule::command(calAverageTransactions::class, ['--type=deposit'])->weekly();
 Schedule::command(billDetector::class, ['--type=deposit'])->weekly();
 
 Schedule::command(cleanSMS::class)->weekly();
+
+
+Schedule::command(sendReport::class)->weekly();
 
