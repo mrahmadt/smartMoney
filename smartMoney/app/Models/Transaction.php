@@ -134,6 +134,14 @@ public function createTransaction($transaction, $SMS_sender)
 
         $transaction['source_id'] = $myaccount->id;
 
+        $accountCode = $transaction['MyAccountNumber'];
+        $options = $myaccount->_transactionOptions ?? [];
+        if (isset($options[$accountCode]['transactions_budget_id'])) {
+            $transaction['budget_id'] = $options[$accountCode]['transactions_budget_id'];
+        } elseif (isset($options['transactions_budget_id'])) {
+            $transaction['budget_id'] = $options['transactions_budget_id'];
+        }
+
         if (empty($transaction['currency'])) {
             $transaction['currency'] = $myaccount->attributes->currency_code ?? '';
         }
@@ -209,10 +217,77 @@ public function createTransaction($transaction, $SMS_sender)
             $output['success'] = true;
             $output['transaction_id'] = $result->data->id;
             $output['attributes'] = $result->data->attributes->transactions[0];
+            $output['budget_id'] = $transaction['budget_id'] ?? null;
         }else{
             $output['error'] = 'Unknown error';
         }
         return $output;
+    }
+    
+    public static function abnormalTransaction($amount, $type = 'withdrawal', $transaction_journal_id = 41, $source_id = null, $destination_id = null, $category_id = null, $budget_id = null){
+
+        $abnormal_threshold_percentage = config('app.abnormal_threshold_percentage_' . $type, 30); // Set your threshold for abnormal transactions in percentage
+
+        if($source_id != null){
+            $abnormal_threshold_percentage = config('app.abnormal_threshold_percentage_source', 0);
+        }
+        if($destination_id != null){
+            $abnormal_threshold_percentage = config('app.abnormal_threshold_percentage_destination', 0);
+        }
+        if($category_id != null){
+            $abnormal_threshold_percentage = config('app.abnormal_threshold_percentage_category', 0);
+        }
+        if($budget_id != null){
+            $abnormal_threshold_percentage = config('app.abnormal_threshold_percentage_budget', 0);
+        }
+        if($abnormal_threshold_percentage == 0) return false; // if threshold is 0, disable abnormal transaction detection
+
+        $filter = [];
+
+        if($source_id) $filter['source_id'] = $source_id;
+        if($destination_id) $filter['destination_id'] = $destination_id;
+        if($category_id) $filter['category_id'] = $category_id;
+        if($budget_id) $filter['budget_id'] = $budget_id;
+
+
+        $total_pages = 10;
+        $today = date('Y-m-d');
+        $maxMonths = strtotime('-'.config('app.average_transactions_months', 3) .' months', strtotime($today));
+        $xMonthsAgo = date('Y-m-d',$maxMonths);
+        
+        $fireflyIII = new fireflyIII();
+        $transactions = [];
+        for($page=1; $page<=$total_pages; $page++){
+            $response = $fireflyIII->getTransactions(end: $today, start: $xMonthsAgo, filter: $filter, limit: 500, page: $page, type: $type);
+            if($response == false) break;
+            foreach($response as $item){
+                if(!isset($item->amount)) continue;
+                if($item->transaction_journal_id == $transaction_journal_id) continue;
+                $transactions[] = [
+                    'amount' => $item->amount,
+                ];
+            }
+        }
+        // calculate average amount from $transactions[*]['amount']
+        $total_transactions = count($transactions);
+
+        if($total_transactions == 0) {
+            echo "No transactions found for the given criteria.\n";
+        }
+        if($total_transactions == 0) return false;
+        $average_amount = array_sum(array_column($transactions, 'amount')) / $total_transactions;
+        $difference_percentage = abs($amount - $average_amount) / $average_amount * 100;
+
+        if($difference_percentage >= $abnormal_threshold_percentage){
+
+            return [
+                'amount' => $amount,
+                'average_amount' => $average_amount,
+                'difference_percentage' => $difference_percentage
+            ];
+        }
+
+        return false;
     }
     public static $cleanName = [
         //BURGER KING 214 Q07

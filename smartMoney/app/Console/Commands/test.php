@@ -8,6 +8,7 @@ use App\Models\SMS;
 use App\Jobs\parseSMSJob;
     use Carbon\Carbon;
 use App\Models\Transaction;
+use App\Models\Alert;
 use App\Ai\Agents\parseSMS;
 use App\Services\fireflyIII;
 
@@ -34,27 +35,26 @@ class test extends Command
      */
     public function handle()
     {
-        $source_id = 1;
-        $fireflyIII = new fireflyIII();
-        $account = $fireflyIII->getAccount($source_id);
-        $codes = $fireflyIII->getAccountSMSConfig($account->data->attributes);
-        dd($codes);
-
-    exit;
-        $sms_id = 1;
-        $sms = SMS::find($sms_id);
-
-        dispatch(new parseSMSJob($sms))->onConnection('sync');
-
+ 
+        self::abnormalTransaction();
         exit;
+        // $sms_id = 1;
+        // $sms = SMS::find($sms_id);
 
-        $this->generateDummyTransactions(200);
-        exit;   
+        // dispatch(new parseSMSJob($sms))->onConnection('sync');
+
+        // exit;
+
+        // $this->generateDummyTransactions(200);
+        // exit;   
 
         // dd($sms, $SMS_sender);
         // $sms_message = file_get_contents(storage_path('app/prompts/sample_sms_message.txt'));
 
     }
+
+    
+
 
 public function generateDummyTransactions(int $count = 50): void
 {

@@ -248,7 +248,7 @@ class fireflyIII
 
         if (isset($transactions->exception) && !isset($transactions->data[0])) return false;
         // dd($transactions->data);
-        if ($filter == []) return $transactions;
+        // if ($filter == []) return $transactions;
 
         $filteredTransactions = [];
         foreach ($transactions->data as $transaction) {
@@ -263,6 +263,7 @@ class fireflyIII
         }
         return $filteredTransactions;
     }
+
     public function getTransaction($transaction_id)
     {
         $transaction = $this->callAPI('transactions/' . $transaction_id);
@@ -375,6 +376,9 @@ class fireflyIII
                     return $account;
                 } elseif ($SMSconfigs['sender'] !== null && strtolower($SMSconfigs['sender']) == $sender && $failIfAccountCodeNotFound && $defaultAccount == false) {
                     $defaultAccount = $account;
+                    if (isset($SMSconfigs['options'])) {
+                        $defaultAccount->_transactionOptions = $SMSconfigs['options'];
+                    }
                 }
             }
         }

@@ -127,4 +127,11 @@ return [
         'token' => env('FIREFLYIII_TOKEN'),
     ],
 
+    'average_transactions_months' => env('AVERAGE_TRANSACTIONS_MONTHS', 3),
+    'abnormal_threshold_percentage_withdrawal' => env('ABNORMAL_THRESHOLD_PERCENTAGE_WITHDRAWAL', 0),
+    'abnormal_threshold_percentage_destination' => env('ABNORMAL_THRESHOLD_PERCENTAGE_DESTINATION', 0),
+    'abnormal_threshold_percentage_source' => env('ABNORMAL_THRESHOLD_PERCENTAGE_SOURCE', 0),
+    'abnormal_threshold_percentage_category' => env('ABNORMAL_THRESHOLD_PERCENTAGE_CATEGORY', 0),
+    'abnormal_threshold_percentage_budget' => env('ABNORMAL_THRESHOLD_PERCENTAGE_BUDGET', 0),
+
 ];

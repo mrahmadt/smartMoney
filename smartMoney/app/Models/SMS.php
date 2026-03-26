@@ -150,6 +150,15 @@ class SMS extends Model
                     $sms->errors = $errors;
                 }
                 $sms->save();
+                $user = User::find(1);
+                Alert::createAlert(
+                    title: 'Invalid SMS',
+                    message: ($errors ? json_encode($errors) : 'Unknown'),
+                    user: $user,
+                    data: [
+                        'sms_id' => $sms->id,
+                    ]
+                );
             } else {
                 $sms->delete();
             }

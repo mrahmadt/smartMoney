@@ -11,6 +11,7 @@ use App\Models\ParseSMS;
 use App\Models\Transaction;
 use App\Models\SMSSender;
 use App\Models\Alert;
+use App\Models\User;
 
 class parseSMSJob implements ShouldQueue
 {
@@ -136,11 +137,39 @@ class parseSMSJob implements ShouldQueue
         }
         $transactionModel = new Transaction();
         $status = $transactionModel->createTransaction($transaction, $this->SMS_sender);
-        dd($status);
+
         if ($status['success']) {
             print('Transaction created successfully with ID: ' . $status['transaction_id']);
             $this->sms->update(['is_processed' => true]);
-            Alert::newTransaction($status['attributes']);
+
+            $account = $this->fireflyIII->getAccount($status['source_id']);
+            $accountCode = $this->fireflyIII->getAccountConfig($account->data->attributes);
+            $user_id = 1;
+            if($accountCode['user_id']){
+                $user_id = $accountCode['user_id'];
+            }
+            $user = User::find($user_id);
+            Alert::newTransaction(transaction: $status['attributes'], user: $user);
+
+            $abnormalTransaction = Transaction::abnormalTransaction(
+                amount: $status['amount'],
+                transaction_journal_id: $status['transaction_id'],
+                // source_id: $status['source_id'] ?? null,
+                // destination_id: $status['destination_id'] ?? null,
+                category_id: $status['category_id'] ?? null,
+                budget_id: $status['budget_id'] ?? null,
+            );
+
+            if($abnormalTransaction){
+                Alert::abnormalTransaction(
+                    user_id: $user_id,
+                    transaction_journal_id: $status['transaction_id'],
+                    amount: $status['amount'],
+                    average_amount: $abnormalTransaction['average_amount'],
+                    difference_percentage: $abnormalTransaction['difference_percentage']
+                );
+            }
+
         } else {
             SMS::processInvalidSMS(sms: $this->sms, errors: 'Failed to create transaction: ' . $status['error'] . ' ' . print_r($transaction, true), keep: true);
             return;

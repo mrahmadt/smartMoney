@@ -31,7 +31,7 @@ class Alert extends Model
         return $this->belongsTo(User::class, 'user_id', 'id');
     }
 
-    public static function newTransaction($transaction)
+    public static function newTransaction($transaction, $user)
     {
         $amount = number_format($transaction['amount'], 2);
         $amount = str_replace('.00', '', $amount);
@@ -50,21 +50,9 @@ class Alert extends Model
         $destination_name = $transaction['destination_name'] ?? '';
         $source_name = $transaction['source_name'] ?? '';
         $category_name = ' (' . $transaction['category_name'] . ') ' ?? '';
-        
-        $source_id = $transaction['source_id'];
-        $fireflyIII = new fireflyIII();
-        $account = $fireflyIII->getAccount($source_id);
-        $accountCode = $fireflyIII->getAccountConfig($account->data->attributes);
 
         $title = $type . ' ' . $amount . ' ' . $currency;
         $message = $destination_name . $category_name . "\n" . $source_name;
-
-        $user_id = 1;
-        if($accountCode['user_id']){
-            $user_id = $accountCode['user_id'];
-        }
-        $user = User::find($user_id);
-
         Alert::notify(
             title: $title,
             message: $message,
@@ -73,6 +61,19 @@ class Alert extends Model
                 'transaction_id' => $transaction['transaction_journal_id']
             ]
         );
+    }
+    public static function abnormalTransaction($user_id, $transaction_journal_id, $amount, $average_amount, $difference_percentage){
+                Alert::createAlert(
+                    title: 'Abnormal Transaction',
+                    message: "An abnormal transaction has been detected. Amount: ".number_format($amount, 2, '.',',').". Average amount: ".number_format($average_amount, 2, '.',',').", (".number_format($difference_percentage, 2, '.',',')."%).",
+                    user: $user_id, // You can change this to notify a specific user
+                    transaction_journal_id: $transaction_journal_id,
+                    data: [
+                        'amount' => $amount,
+                        'average_amount' => $average_amount,
+                        'difference_percentage' => $difference_percentage
+                    ]
+                );
     }
 
     public static function notify($title, $message, $user, $transaction_journal_id = null, $data = [])
