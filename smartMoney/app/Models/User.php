@@ -24,6 +24,7 @@ class User extends Authenticatable
         'email',
         'password',
         'budget_id',
+        'language',
     ];
 
     /**

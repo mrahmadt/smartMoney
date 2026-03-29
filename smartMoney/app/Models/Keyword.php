@@ -68,6 +68,10 @@ class Keyword extends Model
     }
     public static function regex_breaks(): array
     {
+        return self::returnActiveKeywordsByType('breaks', true, 'sms');
+    }
+    public static function non_regex_breaks(): array
+    {
         return self::returnActiveKeywordsByType('breaks', false, 'sms');
     }
     public static function regex_urls(): array

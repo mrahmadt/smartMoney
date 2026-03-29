@@ -20,6 +20,8 @@ class SMSResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
+    protected static ?string $modelLabel = 'SMS';
+    protected static ?string $pluralModelLabel = 'SMS';
     protected static ?string $recordTitleAttribute = 'SMS';
 protected static ?int $navigationSort = 12;
 

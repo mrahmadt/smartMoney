@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             KeywordSeeder::class,
+            SettingSeeder::class,
         ]);
 
     }

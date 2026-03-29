@@ -60,9 +60,9 @@ public function createTransaction($transaction, $SMS_sender)
 
         $transaction['amount'] = str_replace(',', '', $transaction['amount']);
         $transaction['totalAmount'] = str_replace(',', '', $transaction['totalAmount']);
+        
 
-
-        if (is_numeric($transaction['totalAmount']) || $transaction['totalAmount'] > 0) {
+        if (is_numeric($transaction['totalAmount']) && $transaction['totalAmount'] > 0) {
             $transaction['amount'] = $transaction['totalAmount'];
             $transaction['currency'] = $transaction['totalAmountCurrency'];
             $transaction['fees'] = null;
@@ -73,12 +73,12 @@ public function createTransaction($transaction, $SMS_sender)
             unset($transaction['totalAmount']);
             unset($transaction['totalAmountCurrency']);
         }
+        
 
         if ($transaction['amount'] == '' || !is_numeric($transaction['amount']) || $transaction['amount'] <= 0) {
             $output['error'] = 'Invalid amount';
             return $output;
         }
-
         if (strlen($transaction['currency']) > 3) {
             $output['error'] = 'Invalid currency';
             return $output;
@@ -126,7 +126,6 @@ public function createTransaction($transaction, $SMS_sender)
         }
 
         $myaccount = $this->fireflyIII->getAccountBySMSAcctCode(sender: $this->SMS_sender->sender, accountCode: $transaction['MyAccountNumber'], failIfAccountCodeNotFound: true);
-
         if (!$myaccount) {
             $output['error'] = 'MyAccountNumber does not match any account in FireFly III';
             return $output;
@@ -208,6 +207,7 @@ public function createTransaction($transaction, $SMS_sender)
         unset($transaction['OtherAccountName']);
         unset($transaction['OtherAccountNumber']);
         if (!$transaction['tags']) unset($transaction['tags']);
+
         $result = $this->fireflyIII->newTransaction($transaction);
 
         if(isset($result->exception) || isset($result->errors) || isset($result->message)){
@@ -226,19 +226,19 @@ public function createTransaction($transaction, $SMS_sender)
     
     public static function abnormalTransaction($amount, $type = 'withdrawal', $transaction_journal_id = 41, $source_id = null, $destination_id = null, $category_id = null, $budget_id = null){
 
-        $abnormal_threshold_percentage = config('app.abnormal_threshold_percentage_' . $type, 30); // Set your threshold for abnormal transactions in percentage
+        $abnormal_threshold_percentage = Setting::getInt('abnormal_threshold_percentage_' . $type, 30);
 
         if($source_id != null){
-            $abnormal_threshold_percentage = config('app.abnormal_threshold_percentage_source', 0);
+            $abnormal_threshold_percentage = Setting::getInt('abnormal_threshold_percentage_source', 0);
         }
         if($destination_id != null){
-            $abnormal_threshold_percentage = config('app.abnormal_threshold_percentage_destination', 0);
+            $abnormal_threshold_percentage = Setting::getInt('abnormal_threshold_percentage_destination', 0);
         }
         if($category_id != null){
-            $abnormal_threshold_percentage = config('app.abnormal_threshold_percentage_category', 0);
+            $abnormal_threshold_percentage = Setting::getInt('abnormal_threshold_percentage_category', 0);
         }
         if($budget_id != null){
-            $abnormal_threshold_percentage = config('app.abnormal_threshold_percentage_budget', 0);
+            $abnormal_threshold_percentage = Setting::getInt('abnormal_threshold_percentage_budget', 0);
         }
         if($abnormal_threshold_percentage == 0) return false; // if threshold is 0, disable abnormal transaction detection
 
@@ -252,7 +252,7 @@ public function createTransaction($transaction, $SMS_sender)
 
         $total_pages = 10;
         $today = date('Y-m-d');
-        $maxMonths = strtotime('-'.config('app.average_transactions_months', 3) .' months', strtotime($today));
+        $maxMonths = strtotime('-'.Setting::getInt('average_transactions_months', 3) .' months', strtotime($today));
         $xMonthsAgo = date('Y-m-d',$maxMonths);
         
         $fireflyIII = new fireflyIII();
@@ -313,7 +313,7 @@ public function createTransaction($transaction, $SMS_sender)
        ['/\.$/m',''],
 
        // PAYPAL something
-       ['/PAYPAL (.{3,})/m','$1'],
+       ['/paypal (.{3,})/mi','$1'],
 
         //BURGER KING #5878
        ['/(.*) \#\d{1,}$/m','$1'],

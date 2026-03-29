@@ -20,6 +20,8 @@ class SMSRegularExpResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
+    protected static ?string $modelLabel = 'SMS Regular Exp';
+    protected static ?string $pluralModelLabel = 'SMS Regular Exps';
     protected static ?string $recordTitleAttribute = 'SMSRegularExp';
 protected static ?int $navigationSort = 13;
 

@@ -33,40 +33,56 @@ class Alert extends Model
 
     public static function newTransaction($transaction, $user)
     {
-        $amount = number_format($transaction['amount'], 2);
-        $amount = str_replace('.00', '', $amount);
-        $currency = $transaction['currency'] ?? '';
-        // $description = $transaction['description'] ?? '';
+        app()->setLocale($user->language ?? 'en');
 
-        if ($transaction['type'] = 'withdrawal') {
-            $type = 'Spent';
-        } elseif ($transaction['type'] = 'deposit') {
-            $type = 'Received';
-        } elseif ($transaction['type'] = 'transfer') {
-            $type = 'Transferred';
+        $amount = number_format($transaction->amount, 2);
+        $amount = str_replace('.00', '', $amount);
+        $currency = $transaction->currency ?? '';
+        dd($transaction);
+        if ($transaction->type == 'withdrawal') {
+            $type = __('alert.spent');
+        } elseif ($transaction->type == 'deposit') {
+            $type = __('alert.received');
+        } elseif ($transaction->type == 'transfer') {
+            $type = __('alert.transferred');
         } else {
-            $type = 'Processed';
+            $type = __('alert.processed');
         }
-        $destination_name = $transaction['destination_name'] ?? '';
-        $source_name = $transaction['source_name'] ?? '';
-        $category_name = ' (' . $transaction['category_name'] . ') ' ?? '';
+        $destination_name = $transaction->destination_name ?? '';
+        $source_name = $transaction->source_name ?? '';
+        $category_name = !empty($transaction->category_name) ? ' (' . $transaction->category_name . ') ' : '';
 
         $title = $type . ' ' . $amount . ' ' . $currency;
-        $message = $destination_name . $category_name . "\n" . $source_name;
+        $message = $title . "\n" . $destination_name . $category_name . "\n" . $source_name;
+
+        dd(['title' => $title,
+            'message' => $message,
+            'user' => $user,
+            'data' => [
+                'transaction_id' => $transaction->transaction_journal_id
+            ]]);
         Alert::notify(
             title: $title,
             message: $message,
             user: $user,
             data: [
-                'transaction_id' => $transaction['transaction_journal_id']
+                'transaction_id' => $transaction->transaction_journal_id
             ]
         );
     }
     public static function abnormalTransaction($user_id, $transaction_journal_id, $amount, $average_amount, $difference_percentage){
+                $user = is_numeric($user_id) ? User::find($user_id) : $user_id;
+                if (!$user) return;
+                app()->setLocale($user->language ?? 'en');
+
                 Alert::createAlert(
-                    title: 'Abnormal Transaction',
-                    message: "An abnormal transaction has been detected. Amount: ".number_format($amount, 2, '.',',').". Average amount: ".number_format($average_amount, 2, '.',',').", (".number_format($difference_percentage, 2, '.',',')."%).",
-                    user: $user_id, // You can change this to notify a specific user
+                    title: __('alert.abnormal_title'),
+                    message: __('alert.abnormal_message', [
+                        'amount' => number_format($amount, 2, '.', ','),
+                        'average_amount' => number_format($average_amount, 2, '.', ','),
+                        'percentage' => number_format($difference_percentage, 2, '.', ','),
+                    ]),
+                    user: $user,
                     transaction_journal_id: $transaction_journal_id,
                     data: [
                         'amount' => $amount,

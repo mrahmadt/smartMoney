@@ -1,7 +1,5 @@
 
 [account notes]
-
-
 user_id=1
 SMS_Sender=SMS Sender name
 SMS_AcctCodes= formated in comma
@@ -23,9 +21,10 @@ TODOs
 [ ] SubscriptionDetector
 [ ] Alert Average Transaction
 [ ] check if we got a date from API call
-[ ] exchangeRate needed from Firefly
+[ ] exchangeRate needed from Firefly965.5
 [ ] budget_id from user
-
+[ ] user_id in notes will send alerts for my transactions!
+[ ] alert via email, telegram, whatsapp, pushover?!
 
 https://moneycontrol.mooo.com/profile
 FIREFLYIII_TOKEN

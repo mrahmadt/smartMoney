@@ -5,29 +5,35 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\SMS;
 use App\Models\SMSSender;
+use App\Models\Setting;
 use App\Jobs\parseSMSJob;
 
 class SMSController extends Controller
 {
+    /**
+     * Store a new SMS and dispatch it for processing.
+     *
+     * Expected JSON format:
+     * {
+     *     "_version": 1,
+     *     "query": {
+     *         "sender": "BankName",
+     *         "date": "2024-01-24 12:40:23",  // optional, SMS received date (highest priority for transaction date)
+     *         "message": {
+     *             "text": "SMS body text"
+     *         }
+     *     },
+     *     "app": {
+     *         "version": "1.1"
+     *     }
+     * }
+     */
     public function store(Request $request)
     {
-        if(config('parseSMS.enabled') == false){
+        if(Setting::getBool('parsesms_enabled', false) == false){
             return response()->json(['filter' => true, 'error'=>'disabled'], 200);
         }
-        /* input for iOS
-        {
-            "_version": 1,
-            "query": {
-                "sender": "saib",
-                "message": {
-                    "text": "PoS Purchase\nBy: ***7632;Credit Card\nAmount: USD 100.00\nAt: ALDREES 239\nBalance: USD 122238785.99\nDate: 2024-01-24 12:40:23"
-                }
-            },
-            "app": {
-                "version": "1.1"
-            }
-        }
-        */
+
         $data = $request->all();
 
         if(!isset($data['query']['sender']) || !isset($data['query']['message']['text'])){
@@ -41,16 +47,21 @@ class SMSController extends Controller
 
         $message = SMS::removeHiddenChars($data['query']['message']['text']);
 
+        if (SMS::isDuplicate($sender, $message)) {
+            return response()->json(['filter' => true, 'error' => 'duplicate'], 200);
+        }
+
         $stripedMessage = SMS::preClean($message);
         $status = SMS::isValidBankTransaction($stripedMessage);
         if($status == false){
-            if(config('parseSMS.store_invalid_sms')){
+            if(Setting::getBool('parsesms_store_invalid_sms', false)){
                 $sms = new SMS();
                 $sms->sender = $sender;
                 $sms->message = $message;
                 $sms->content = $data;
                 $sms->is_valid = false;
                 $sms->is_processed = true;
+                $sms->message_hash = SMS::generateHash($sender, $message);
                 $sms->errors = ['reason' => 'invalid SMS'];
                 $sms->save();
             }
@@ -63,6 +74,7 @@ class SMSController extends Controller
         $sms->content = $data;
         $sms->is_valid = true;
         $sms->is_processed = false;
+        $sms->message_hash = SMS::generateHash($sender, $message);
         $sms->save();
 
         try {

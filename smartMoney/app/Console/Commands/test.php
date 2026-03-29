@@ -35,81 +35,41 @@ class test extends Command
      */
     public function handle()
     {
- 
-        self::abnormalTransaction();
-        exit;
-        // $sms_id = 1;
-        // $sms = SMS::find($sms_id);
 
-        // dispatch(new parseSMSJob($sms))->onConnection('sync');
+    $date = '2026-0' . mt_rand(1,3) . '-' . mt_rand(1,28) . ' ' . mt_rand(10,23) . ':' . mt_rand(10,59) . ':' . mt_rand(10,59); 
 
-        // exit;
+    $message = "PoS Purchase
+By: ***7632;Credit Card
+Amount: USD 100.00
+At: ALDREwES 239
+Balance: USD 122238785.99
+Date: ' . $date . '";
 
-        // $this->generateDummyTransactions(200);
-        // exit;   
+    $content = [
+        'app' => [
+            'version' => '1.1',
+        ],
+        'query' => [
+            'sender' => 'saib',
+            'message' => [
+                'text' => "PoS Purchase\nBy: ***7632;Credit Card\nAmount: USD 100.00\nAt: ALDREwES 239\nBalance: USD 122238785.99\nDate: $date",
+            ],
+        ],
+        '_version' => 1,
+    ];
 
-        // dd($sms, $SMS_sender);
-        // $sms_message = file_get_contents(storage_path('app/prompts/sample_sms_message.txt'));
+    $sms = new SMS();
+    $sms->sender = 'saib';
+    $sms->content = $content;
+    $sms->message = $message;
+    $sms->is_processed = false;
+    $sms->save();
+
+    (new parseSMSJob($sms))->handle();
 
     }
 
     
 
 
-public function generateDummyTransactions(int $count = 50): void
-{
-    $SMS_sender = SMSSender::find(1);
-
-    $categories = [
-        'Food',
-        'Entertainment',
-        'Transportation',
-        'Shopping',
-        'Bills',
-        'Utilities',
-        'Healthcare',
-        'Education',
-        'Travel',
-        'Other',
-    ];
-
-    $descriptions = [
-        'Restaurant payment',
-        'Supermarket',
-        'Taxi ride',
-        'Online purchase',
-        'Electricity bill',
-        'Water bill',
-        'Pharmacy',
-        'Movie ticket',
-        'Fuel station',
-        'Coffee shop',
-    ];
-
-    $start = Carbon::parse('2025-12-01T00:00:00+00:00');
-    $end   = Carbon::parse('2026-02-28T23:59:59+00:00');
-
-    for ($i = 0; $i < $count; $i++) {
-
-        $randomDate = Carbon::createFromTimestamp(
-            rand($start->timestamp, $end->timestamp)
-        )->toIso8601String(); // 2026-02-01T00:00:00+00:00 format
-
-        $transaction = new Transaction();
-
-        $transaction->createTransaction(
-            [
-                'type' => 'withdrawal',
-                'amount' => rand(10, 1000),
-                'currency' => 'SAR',
-                'transactionDateTime' => $randomDate,
-                'description' => $descriptions[array_rand($descriptions)],
-                'category_name' => $categories[array_rand($categories)],
-                'MyAccountNumber' => 'XXX7001',
-                'OtherAccountName' => 'Merchant ' . rand(100, 999),
-            ],
-            $SMS_sender
-        );
-    }
-}
 }

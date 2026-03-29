@@ -9,6 +9,7 @@ class SMSSender extends Model
 {
     use HasFactory;
     protected $table = 'smssenders';
+    public $timestamps = false;
     protected $fillable = [
         'sender',
         'is_active',

@@ -12,6 +12,7 @@ use App\Models\Transaction;
 use App\Models\SMSSender;
 use App\Models\Alert;
 use App\Models\User;
+use App\Models\Setting;
 
 class parseSMSJob implements ShouldQueue
 {
@@ -58,20 +59,26 @@ class parseSMSJob implements ShouldQueue
             return;
         }
 
-        $categories = $this->fireflyIII->getCategories();
-        $SMSRegularExp = SMSRegularExp::findValidRegExp(sender_id: $this->SMS_sender->id, message: $this->sms->message);
+        // $categories = $this->fireflyIII->getCategories();
+        $SMSRegularExp = false;
+        if (Setting::getBool('parsesms_regex_enabled', true)) {
+            $SMSRegularExp = SMSRegularExp::findValidRegExp(sender_id: $this->SMS_sender->id, message: $this->sms->message);
+        }
         $transaction = [];
+        $sms_date = $this->sms->content['query']['date'] ?? null;
 
 
+        $newTransaction = false;
         if ($SMSRegularExp) {
-            $detectedCategory = ParseSMS::detectCategory(message: $this->sms->message, transactionType: $SMSRegularExp['transactionType'], matches: $SMSRegularExp['matches'], categories: $categories);
+            // $detectedCategory = ParseSMS::detectCategory(message: $this->sms->message, transactionType: $SMSRegularExp['transactionType'], matches: $SMSRegularExp['matches'], categories: $categories);
+            $detectedCategory = ParseSMS::detectCategory(message: $this->sms->message, transactionType: $SMSRegularExp['transactionType'], matches: $SMSRegularExp['matches']);
             $transaction['type'] = $SMSRegularExp['transactionType'];
             $transaction['amount'] = $SMSRegularExp['matches']['amount'] ?? null;
             $transaction['currency'] = $SMSRegularExp['matches']['currency'] ?? null;
             $transaction['totalAmount'] = $SMSRegularExp['matches']['totalAmount'] ?? null;
             $transaction['totalAmountCurrency'] = $SMSRegularExp['matches']['totalAmountCurrency'] ?? null;
 
-            $transaction['transactionDateTime'] = $SMSRegularExp['matches']['transactionDateTime'] ?? null;
+            $transaction['transactionDateTime'] = $sms_date ?? $SMSRegularExp['matches']['transactionDateTime'] ?? null;
 
             $transaction['MyAccountNumber'] = $SMSRegularExp['matches']['MyAccountNumber'] ?? null;
             $transaction['OtherAccountNumber'] = $SMSRegularExp['matches']['OtherAccountNumber'] ?? null;
@@ -84,10 +91,10 @@ class parseSMSJob implements ShouldQueue
             $transaction['description'] = Transaction::generateDescription($this->sms->message);
             $transaction['notes'] = $this->SMS_sender->sender . "\n" . $this->sms->message;
             $transaction['tags'] = ['regex:' . $SMSRegularExp['id']];
-        } elseif (config('parseSMS.failback_AI')) { // Not found. now we need LLM support
+            $newTransaction = true;
+        } elseif (Setting::getBool('parsesms_failback_ai', false)) { // Not found. now we need LLM support
             try {
-                $output = ParseSMS::parseSMSviaLLM($this->sms->message, $categories);
-
+                $output = ParseSMS::parseSMSviaLLM($this->sms->message);
                 if ($output === false) {
                     SMS::processInvalidSMS(sms: $this->sms, errors: 'LLM returned invalid JSON output', keep: true);
                     return;
@@ -117,7 +124,7 @@ class parseSMSJob implements ShouldQueue
                 $transaction['currency'] = $output['currency'] ?? null;
                 $transaction['totalAmount'] = $output['totalAmount'] ?? null;
                 $transaction['totalAmountCurrency'] = $output['totalAmountCurrency'] ?? null;
-                $transaction['transactionDateTime'] = $output['transactionDateTime'] ?? null;
+                $transaction['transactionDateTime'] = $sms_date ?? $output['transactionDateTime'] ?? null;
 
                 $transaction['MyAccountNumber'] = $output['MyAccountNumber'] ?? null;
                 $transaction['OtherAccountNumber'] = $output['OtherAccountNumber'] ?? null;
@@ -126,14 +133,20 @@ class parseSMSJob implements ShouldQueue
                 $transaction['fees'] = $output['fees'] ?? null;
                 $transaction['feesCurrency'] = $output['feesCurrency'] ?? null;
 
-                $transaction['category_name'] = $output['category'] ?? null;
+                $detectedCategory = ParseSMS::detectCategory(message: $this->sms->message, transactionType: $output['transactionType'], matches: $output);
+                $transaction['category_name'] = $detectedCategory['category'] ?? null;
                 $transaction['description'] = Transaction::generateDescription($this->sms->message);
                 $transaction['notes'] = $this->SMS_sender->sender . "\n" . $this->sms->message;
                 $transaction['tags'] = ['by AI'];
+                $newTransaction = true;
             } catch (\Exception $e) {
                 SMS::processInvalidSMS(sms: $this->sms, errors: 'Internal Error: ' . $e->getMessage(), keep: true);
                 return;
             }
+        }
+        if (!$newTransaction) {
+            SMS::processInvalidSMS(sms: $this->sms, errors: 'No regex matched and AI fallback is disabled or failed', keep: true);
+            return;
         }
         $transactionModel = new Transaction();
         $status = $transactionModel->createTransaction($transaction, $this->SMS_sender);
@@ -142,7 +155,7 @@ class parseSMSJob implements ShouldQueue
             print('Transaction created successfully with ID: ' . $status['transaction_id']);
             $this->sms->update(['is_processed' => true]);
 
-            $account = $this->fireflyIII->getAccount($status['source_id']);
+            $account = $this->fireflyIII->getAccount($status['attributes']->source_id);
             $accountCode = $this->fireflyIII->getAccountConfig($account->data->attributes);
             $user_id = 1;
             if($accountCode['user_id']){
@@ -150,21 +163,21 @@ class parseSMSJob implements ShouldQueue
             }
             $user = User::find($user_id);
             Alert::newTransaction(transaction: $status['attributes'], user: $user);
-
+            dd('not tested');
             $abnormalTransaction = Transaction::abnormalTransaction(
-                amount: $status['amount'],
-                transaction_journal_id: $status['transaction_id'],
+                amount: $status['attributes']->amount,
+                transaction_journal_id: $status['attributes']->transaction_id,
                 // source_id: $status['source_id'] ?? null,
                 // destination_id: $status['destination_id'] ?? null,
-                category_id: $status['category_id'] ?? null,
-                budget_id: $status['budget_id'] ?? null,
+                category_id: $status['attributes']->category_id ?? null,
+                budget_id: $status['attributes']->budget_id ?? null,
             );
 
             if($abnormalTransaction){
                 Alert::abnormalTransaction(
                     user_id: $user_id,
-                    transaction_journal_id: $status['transaction_id'],
-                    amount: $status['amount'],
+                    transaction_journal_id: $status['attributes']->transaction_id,
+                    amount: $status['attributes']->amount,
                     average_amount: $abnormalTransaction['average_amount'],
                     difference_percentage: $abnormalTransaction['difference_percentage']
                 );

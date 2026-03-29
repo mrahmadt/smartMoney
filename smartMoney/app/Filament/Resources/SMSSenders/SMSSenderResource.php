@@ -20,6 +20,8 @@ class SMSSenderResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
+    protected static ?string $modelLabel = 'SMS Sender';
+    protected static ?string $pluralModelLabel = 'SMS Senders';
     protected static ?string $recordTitleAttribute = 'SMSSender';
 protected static ?int $navigationSort = 14;
 
