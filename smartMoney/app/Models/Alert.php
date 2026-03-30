@@ -100,9 +100,9 @@ class Alert extends Model
     public static function createAlert($title, $message, $user, $transaction_journal_id = null, $data = [], $pin = false)
     {
         $user->notify(new WebPush($title, $message));
-        if ($user->alert_via_email) {
-            $user->notify(new AlertEmail($title, $message));
-        }
+        // if ($user->alert_via_email) {
+        //     $user->notify(new AlertEmail($title, $message));
+        // }
         $alert = new Alert();
         $alert->title = $title;
         $alert->transaction_journal_id = $transaction_journal_id;
