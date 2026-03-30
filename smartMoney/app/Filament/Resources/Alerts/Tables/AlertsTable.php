@@ -14,11 +14,14 @@ class AlertsTable
 {
     public static function configure(Table $table): Table
     {
+        app()->setLocale(auth()->user()->language ?? 'en');
         return $table
             ->columns([
                 TextColumn::make('title')
+                    ->label(__('widget.title'))
                     ->weight(fn ($record) => $record->is_read == 0 ? 'bold' : 'normal'),
                 TextColumn::make('message')
+                    ->label(__('widget.message'))
                     ->limit(150)
                     ->wrap()
     ->formatStateUsing(fn ($state) => nl2br(e($state)))

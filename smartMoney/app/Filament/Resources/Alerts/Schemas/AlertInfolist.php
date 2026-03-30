@@ -12,13 +12,14 @@ class AlertInfolist
 {
     public static function configure(Schema $schema): Schema
     {
+        app()->setLocale(auth()->user()->language ?? 'en');
         return $schema
             ->components([
                 TextEntry::make('title')
-                    ->label('Title')
+                    ->label(__('widget.title'))
                     ->weight('bold'),
                 TextEntry::make('message')
-                    ->label('Message')
+                    ->label(__('widget.message'))
                     ->weight('bold')
                     ->html()
                     ->formatStateUsing(fn ($state) => nl2br(e($state)))
@@ -26,13 +27,15 @@ class AlertInfolist
                 
                 // PrettyJsonField::make('data')->columnSpanFull(),
                 TextEntry::make('data')
-                    ->label('Data')
+                    ->label(__('widget.data'))
+                    ->html()
+                    ->getStateUsing(fn ($record) => is_array($record->data) ? self::renderArray($record->data) : e($record->data))
                     ->columnSpanFull(),
                 TextEntry::make('transaction_journal_id')
                     ->label('_')
                     ->weight('bold')
                     ->numeric()
-                    ->formatStateUsing(fn ($record) => $record['transaction_journal_id'] ? 'View Transaction' : '-')
+                    ->formatStateUsing(fn ($record) => $record['transaction_journal_id'] ? __('widget.view_transaction') : '-')
                     ->placeholder('-')
                     ->url(fn ($record) => $record['transaction_journal_id'] ? EditTransactions::getUrl([
                         'transactionId' => $record['transaction_journal_id']
@@ -40,10 +43,24 @@ class AlertInfolist
                     ->columnSpanFull(),
 
                     TextEntry::make('created_at')
-                    ->label('Created At')
+                    ->label(__('widget.created_at'))
                     ->weight('bold')
                     ->dateTime()
                     ->placeholder('-')->columnSpanFull(),
             ]);
+    }
+
+    private static function renderArray(array $data, int $indent = 0): string
+    {
+        $html = '';
+        $pad = str_repeat('&nbsp;&nbsp;&nbsp;&nbsp;', $indent);
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $html .= $pad . '<strong>' . e($key) . ':</strong><br>' . self::renderArray($value, $indent + 1);
+            } else {
+                $html .= $pad . '<strong>' . e($key) . ':</strong> ' . e($value) . '<br>';
+            }
+        }
+        return $html;
     }
 }

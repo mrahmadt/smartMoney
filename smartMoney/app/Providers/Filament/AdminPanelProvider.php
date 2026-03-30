@@ -27,6 +27,7 @@ use App\Filament\Widgets\SpendingCategoriesChart;
 use App\Filament\Widgets\TopCategories;
 use App\Filament\Widgets\TopTransactions;
 use App\Filament\Widgets\TopMerchants;
+use App\Filament\Widgets\RecentTransactions;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -48,6 +49,7 @@ class AdminPanelProvider extends PanelProvider
             // ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
                 StatsOverview::class,
+                RecentTransactions::class,
                 TopTransactions::class,
                 TopMerchants::class,
                 TopCategories::class,

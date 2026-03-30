@@ -27,6 +27,12 @@ class EditTransactions extends Page implements HasForms
 
     protected static ?string $slug = 'transactions/{transactionId}/edit';
 
+    public function getTitle(): string
+    {
+        app()->setLocale(auth()->user()->language ?? 'en');
+        return __('menu.edit_transaction');
+    }
+
     public string $transactionId;
     public $budgets;
     public $accounts;
@@ -36,6 +42,7 @@ class EditTransactions extends Page implements HasForms
 
     public function mount(string $transactionId): void
     {
+        app()->setLocale(auth()->user()->language ?? 'en');
         $this->transactionId = $transactionId;
 
         $this->data = $this->fetchTransaction();
@@ -50,35 +57,38 @@ class EditTransactions extends Page implements HasForms
             ->components([
                 Form::make([
                     // TextInput::make('transaction_journal_id'),
-                    TextInput::make('description')->required(),
+                    TextInput::make('description')->label(__('widget.description'))->required(),
                     // TextInput::make('type'),
 
                     Select::make('type')
+                        ->label(__('widget.type'))
                         ->options([
-                            'withdrawal' => 'withdrawal',
-                            'transfer' => 'transfer',
-                            'deposit' => 'deposit',
+                            'withdrawal' => __('widget.withdrawal'),
+                            'transfer' => __('widget.transfer'),
+                            'deposit' => __('widget.deposit'),
                         ])->required(),
-                    TextInput::make('amount')->required()->formatStateUsing(fn($state) => number_format($state, 2, '.', ','))->suffix(fn() => $this->data['currency_code'] ?? ''),
+                    TextInput::make('amount')->label(__('widget.amount'))->required()->formatStateUsing(fn($state) => number_format($state, 2, '.', ','))->suffix(fn() => $this->data['currency_code'] ?? ''),
 
-                    Select::make('source_id')->label('Account')->required()
+                    Select::make('source_id')->label(__('widget.account'))->required()
                         ->options(fn() => $this->accounts),
 
 
-                    TextInput::make('destination_name')->label('Destination')->required(),
+                    TextInput::make('destination_name')->label(__('widget.destination'))->required(),
 
                     DateTimePicker::make('date')
+                        ->label(__('widget.date'))
                         ->seconds(false)->required(),
 
-                    Select::make('budget_id')->label('Budget')
+                    Select::make('budget_id')->label(__('widget.budget'))
                         ->options(fn() => $this->budgets),
 
-                    TextInput::make('category_name')->label('Category'),
-                    TagsInput::make('tags'),
+                    TextInput::make('category_name')->label(__('widget.category')),
+                    TagsInput::make('tags')->label(__('widget.tags')),
 
 
                     Textarea::make('notes')
-                        ->label('Notes')->rows(7),
+                        ->label(__('widget.notes'))->rows(9)
+                        ->extraAttributes(['style' => 'direction: ltr; text-align: left;']),
 
 
 
@@ -87,6 +97,7 @@ class EditTransactions extends Page implements HasForms
                     ->footer([
                         SchemaActions::make([
                             Action::make('save')
+                                ->label(__('widget.save'))
                                 ->submit('save')
                                 ->keyBindings(['mod+s']),
                         ]),
@@ -104,7 +115,7 @@ class EditTransactions extends Page implements HasForms
         $output = $firefly->updateTransaction($this->transactionId, $state);
         Notification::make()
             ->success()
-            ->title('Saved')
+            ->title(__('widget.saved'))
             ->send();
     }
 

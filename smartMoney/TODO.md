@@ -21,3 +21,4 @@ TODOs
 [ ] Alert Average Transaction
 [ ] alert via email, telegram, whatsapp, pushover?!
 
+[ ] alert of not able to do currency change

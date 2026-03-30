@@ -7,6 +7,8 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 
 class SMSTable
@@ -36,7 +38,12 @@ class SMSTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                TernaryFilter::make('is_valid')
+                    ->label('Valid'),
+                TernaryFilter::make('is_processed')
+                    ->label('Processed'),
+                SelectFilter::make('sender')
+                    ->options(fn () => \App\Models\SMS::query()->distinct()->pluck('sender', 'sender')->toArray()),
             ])
             ->recordActions([
                 EditAction::make(),

@@ -10,6 +10,12 @@ class ViewAlert extends ViewRecord
 {
     protected static string $resource = AlertResource::class;
 
+    public function mount(int | string $record): void
+    {
+        app()->setLocale(auth()->user()->language ?? 'en');
+        parent::mount($record);
+    }
+
     protected function getHeaderActions(): array
     {
         return [

@@ -14,6 +14,8 @@ class StatsOverview extends StatsOverviewWidget
 
     protected function getStats(): array
     {
+        app()->setLocale(Auth::user()->language ?? 'en');
+
         $budget_id = Auth::user()->budget_id;
         if($budget_id == null){
             return [];
@@ -29,7 +31,7 @@ class StatsOverview extends StatsOverviewWidget
             $color = 'warning';
         }
         
-        $stat = Stat::make('Remaining', $budget['remaining'])
+        $stat = Stat::make(__('widget.remaining'), $budget['remaining'])
                 ->description($budget['spentSum'] . ' (' . $budget['budget_percentage_used'] . '%)')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->chart($budget['spending'])

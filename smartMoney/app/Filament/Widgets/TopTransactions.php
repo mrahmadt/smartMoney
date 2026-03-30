@@ -12,8 +12,16 @@ use App\Filament\Pages\EditTransactions;
 
 class TopTransactions extends TableWidget
 {
+    protected function getTableHeading(): string
+    {
+        app()->setLocale(Auth::user()->language ?? 'en');
+        return __('widget.top_transactions');
+    }
+
     protected function getTopTransactions(): array
     {
+        app()->setLocale(Auth::user()->language ?? 'en');
+
         $cacheKey = 'top_transactions_' . Auth::id();
         $cachedData = cache()->get($cacheKey);
         if ($cachedData) {
@@ -53,8 +61,8 @@ class TopTransactions extends TableWidget
 
         }
             foreach ($transactions as $transaction) {
-                $category_name = $transaction->category_name ?? 'Uncategorized';
-                $allTransactions[] = ['transaction_journal_id' => $transaction->transaction_journal_id, 'description' => $transaction->description ?? '', 'date' => $transaction->date ?? '', 'destination_name' => $transaction->destination_name ?? 'Unknown', 'Category' => $category_name, 'Amount' => $transaction->amount];
+                $category_name = $transaction->category_name ?? __('widget.uncategorized');
+                $allTransactions[] = ['transaction_journal_id' => $transaction->transaction_journal_id, 'description' => $transaction->description ?? '', 'date' => $transaction->date ?? '', 'destination_name' => $transaction->destination_name ?? __('widget.unknown'), 'Category' => $category_name, 'Amount' => $transaction->amount];
             }
 
         usort($allTransactions, fn($a, $b) => $b['Amount'] <=> $a['Amount']);
@@ -72,8 +80,8 @@ class TopTransactions extends TableWidget
             'transactionId' => $record['transaction_journal_id']
         ]))
             ->columns([
-                Tables\Columns\TextColumn::make('destination_name')->label('Merchant')->description(fn($record) => date('D M-d g:ia', strtotime($record['date']))),
-                Tables\Columns\TextColumn::make('Amount')->label('Amount')->formatStateUsing(fn($state) => number_format(($state*-1), 0, '.', ','))->color('danger'),
+                Tables\Columns\TextColumn::make('destination_name')->label(__('widget.merchant'))->description(fn($record) => date('D M-d g:ia', strtotime($record['date']))),
+                Tables\Columns\TextColumn::make('Amount')->label(__('widget.amount'))->formatStateUsing(fn($state) => number_format(($state*-1), 0, '.', ','))->color('danger'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([]),

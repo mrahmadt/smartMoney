@@ -8,7 +8,13 @@ use Illuminate\Support\Facades\Auth;
 
 class SpendingCategoriesChart extends ChartWidget
 {
-    protected ?string $heading = 'Categories';
+    protected ?string $heading = null;
+
+    public function getHeading(): ?string
+    {
+        app()->setLocale(Auth::user()->language ?? 'en');
+        return __('widget.categories');
+    }
 
     protected function getData(): array
     {
@@ -22,7 +28,7 @@ class SpendingCategoriesChart extends ChartWidget
         if (count($categories) > $limit) {
             $otherCategories = array_slice($categories, $limit, null, true);
             $categories = array_slice($categories, 0, $limit, true);
-            $categories['Other'] = array_sum($otherCategories);
+            $categories[__('widget.other')] = array_sum($otherCategories);
             // $categories = array_slice($categories, 0, $limit + 1, true);
         }
 
@@ -130,7 +136,7 @@ class SpendingCategoriesChart extends ChartWidget
             if ($transaction->category_name) {
                 $category_name = $transaction->category_name;
             } else {
-                $category_name = 'Uncategorized';
+                $category_name = __('widget.uncategorized');
             }
 
             if (!isset($categories[$category_name])) {

@@ -34,41 +34,11 @@ class SubscriptionDetector extends Command
             return;
         }
         $fireflyIII = new fireflyIII();
-
-        // $subscription = $fireflyIII->findSubscription('Merchant 997');
-
-        // $role = $fireflyIII->createRule([
-        //                 'title' => 'Merchant 997 subscription',
-        //                 'description' => 'Flag Merchant 997 - subscription',
-        //                 'rule_group_title' => 'Subscriptions',
-        //                 'trigger' => 'store-journal',
-        //                 'triggers' => [
-        //                     [
-        //                         'type' => 'destination_account_is',
-        //                         'value' => 276,
-        //                     ],
-        //                     [
-        //                         'type' => 'transaction_type',
-        //                         'value' => 'withdrawal',
-        //                     ]
-        //                 ],
-        //                 'actions' => [
-        //                     [
-        //                         'type' => 'link_to_bill',
-        //                         'value' => $subscription->attributes->name,
-        //                     ]
-        //                 ],
-        //             ]);
-
-        // dd($subscription, $role);
-
         $total_pages = 1;
         $today = date('Y-m-d');
         $transactions = [];
         $xMonthsAgo = date('Y-m-d', strtotime('-'.Setting::getInt('SubscriptionDetector_go_back_days', 120).' days', strtotime($today)));
         for($page=1; $page<=$total_pages; $page++){
-            // $this->info('Page: '.$page);
-            // dd($today, $xMonthsAgo);
             $more_transactions = $fireflyIII->getTransactions(
                 start: $today,
                 end: $xMonthsAgo,

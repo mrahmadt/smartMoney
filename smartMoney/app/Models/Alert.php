@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
 use App\Notifications\WebPush;
+use App\Notifications\AlertEmail;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Services\fireflyIII;
 
@@ -20,9 +21,11 @@ class Alert extends Model
         'message',
         'data',
         'is_read',
+        'is_pinned',
     ];
     protected $casts = [
         'is_read' => 'boolean',
+        'is_pinned' => 'boolean',
         'data' => 'array',
     ];
 
@@ -77,6 +80,7 @@ class Alert extends Model
                     ]),
                     user: $user,
                     transaction_journal_id: $transaction_journal_id,
+                    pin: true,
                     data: [
                         'amount' => $amount,
                         'average_amount' => $average_amount,
@@ -88,17 +92,24 @@ class Alert extends Model
     public static function notify($title, $message, $user, $transaction_journal_id = null, $data = [])
     {
         $user->notify(new WebPush($title, $message));
+        if ($user->alert_via_email) {
+            $user->notify(new AlertEmail($title, $message));
+        }
     }
 
-    public static function createAlert($title, $message, $user, $transaction_journal_id = null, $data = [])
+    public static function createAlert($title, $message, $user, $transaction_journal_id = null, $data = [], $pin = false)
     {
         $user->notify(new WebPush($title, $message));
+        if ($user->alert_via_email) {
+            $user->notify(new AlertEmail($title, $message));
+        }
         $alert = new Alert();
         $alert->title = $title;
         $alert->transaction_journal_id = $transaction_journal_id;
         $alert->user_id = $user->id;
         $alert->message = $message;
         if ($data) $alert->data = $data;
+        if ($pin) $alert->is_pinned = true;
         $alert->save();
     }
 }

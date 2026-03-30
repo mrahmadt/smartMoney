@@ -10,7 +10,11 @@ class ListAlerts extends ListRecords
 {
     protected static string $resource = AlertResource::class;
 
-
+    public function mount(): void
+    {
+        app()->setLocale(auth()->user()->language ?? 'en');
+        parent::mount();
+    }
 
     protected function getHeaderActions(): array
     {

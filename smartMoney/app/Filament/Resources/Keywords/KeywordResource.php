@@ -18,6 +18,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 
 class KeywordResource extends Resource
 {
@@ -26,7 +27,28 @@ class KeywordResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
     protected static ?string $recordTitleAttribute = 'Keyword';
-protected static ?int $navigationSort = 11;
+    protected static ?int $navigationSort = 11;
+
+    public static function getNavigationGroup(): string|\UnitEnum|null
+    {
+        app()->setLocale(auth()->user()->language ?? 'en');
+        return __('menu.config');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return __('menu.keyword');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('menu.keywords');
+    }
+
+    public static function canAccess(): bool
+    {
+        return Auth::id() === 1;
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -104,8 +126,4 @@ protected static ?int $navigationSort = 11;
             'index' => ManageKeywords::route('/'),
         ];
     }
-    public static function canAccess(): bool
-{
-    return auth()->user()->id == 1;
-}
 }

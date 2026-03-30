@@ -20,9 +20,21 @@ class ListTransactions extends Page implements HasTable
     use InteractsWithTable;
     protected string $view = 'filament.pages.list-transactions';
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-banknotes';
-protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 2;
 
-protected function getTransactions(): array
+    public static function getNavigationLabel(): string
+    {
+        app()->setLocale(auth()->user()->language ?? 'en');
+        return __('menu.transactions');
+    }
+
+    public function getTitle(): string
+    {
+        app()->setLocale(Auth::user()->language ?? 'en');
+        return __('menu.transactions');
+    }
+
+    protected function getTransactions(): array
     {
         $start = date('Y-m-01');
         $end = date('Y-m-t');
@@ -73,6 +85,7 @@ protected function getTransactions(): array
     }
     public function table(Table $table): Table
     {
+        app()->setLocale(Auth::user()->language ?? 'en');
         $rows = $this->getTransactions();
         return $table
             ->records(fn() => collect($rows))
@@ -81,9 +94,9 @@ protected function getTransactions(): array
         ]))
 
             ->columns([
-                Tables\Columns\TextColumn::make('destination_name')->label('Merchant'),
+                Tables\Columns\TextColumn::make('destination_name')->label(__('widget.merchant')),
                 Tables\Columns\TextColumn::make('amount')
-                    ->label('Amount')
+                    ->label(__('widget.amount'))
                     ->formatStateUsing(function ($state, $record) {
                         $amount = ($record['type'] === 'withdrawal' || $record['type'] === 'transfer') 
                             ? $state * -1 
@@ -91,8 +104,8 @@ protected function getTransactions(): array
                         return number_format($amount, 0, '.', ',');
                     })
                     ->color(fn($record) => ($record['type'] === 'withdrawal' || $record['type'] === 'transfer') ? 'danger' : 'success'),
-                Tables\Columns\TextColumn::make('date')->label('Date')->formatStateUsing(fn($state) => date('D M-d g:ia', strtotime($state)))->color('primary'),
-                Tables\Columns\TextColumn::make('category_name')->label('Category'),
+                Tables\Columns\TextColumn::make('date')->label(__('widget.date'))->formatStateUsing(fn($state) => date('D M-d g:ia', strtotime($state)))->color('primary'),
+                Tables\Columns\TextColumn::make('category_name')->label(__('widget.category')),
             ])
             ;
     }

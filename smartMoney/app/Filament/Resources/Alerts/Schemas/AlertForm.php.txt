@@ -12,18 +12,23 @@ class AlertForm
 {
     public static function configure(Schema $schema): Schema
     {
+        app()->setLocale(auth()->user()->language ?? 'en');
         return $schema
             ->components([
                 TextInput::make('transaction_journal_id')
                     ->numeric(),
                 TextInput::make('title')
+                    ->label(__('widget.title'))
                     ->required(),
                 Textarea::make('message')
+                    ->label(__('widget.message'))
                     ->required()
                     ->columnSpanFull(),
                 TextInput::make('data'),
                 Toggle::make('is_read')
                     ->required(),
+                Toggle::make('is_pinned')
+                    ->label(__('widget.show_in_dashboard')),
             ]);
     }
 }

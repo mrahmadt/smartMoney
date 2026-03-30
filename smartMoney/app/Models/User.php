@@ -25,6 +25,7 @@ class User extends Authenticatable
         'password',
         'budget_id',
         'language',
+        'alert_via_email',
     ];
 
     /**
@@ -47,6 +48,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'alert_via_email' => 'boolean',
         ];
     }
 }

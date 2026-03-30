@@ -20,10 +20,32 @@ class AlertResource extends Resource
 {
     protected static ?string $model = Alert::class;
 
-
     protected static ?string $recordTitleAttribute = 'Alert';
-protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-bell-alert';
-protected static ?int $navigationSort = 3;
+    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-bell-alert';
+    protected static ?int $navigationSort = 3;
+
+    public static function getNavigationLabel(): string
+    {
+        app()->setLocale(auth()->user()->language ?? 'en');
+        return __('menu.alerts');
+    }
+
+    public static function getModelLabel(): string
+    {
+        app()->setLocale(auth()->user()->language ?? 'en');
+        return __('menu.alert');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('menu.alerts');
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        $count = static::getModel()::where('is_read', false)->where('user_id', auth()->id())->count();
+        return $count > 0 ? (string) $count : null;
+    }
 
 
     public static function form(Schema $schema): Schema
@@ -56,9 +78,13 @@ protected static ?int $navigationSort = 3;
     {
         return [
             'index' => ListAlerts::route('/'),
-            'create' => CreateAlert::route('/create'),
             'view' => ViewAlert::route('/{record}'),
             'edit' => EditAlert::route('/{record}/edit'),
         ];
+    }
+
+    public static function canCreate(): bool
+    {
+        return false;
     }
 }

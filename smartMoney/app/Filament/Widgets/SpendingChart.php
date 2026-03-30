@@ -8,7 +8,13 @@ use Illuminate\Support\Facades\Auth;
 
 class SpendingChart extends ChartWidget
 {
-    protected ?string $heading = 'Spending';
+    protected ?string $heading = null;
+
+    public function getHeading(): ?string
+    {
+        app()->setLocale(Auth::user()->language ?? 'en');
+        return __('widget.spending');
+    }
 
     protected function getData(): array
     {
@@ -25,7 +31,7 @@ $labels = array_map(function($date) {
     return [
         'datasets' => [
             [
-                'label' => 'Spending',
+                'label' => __('widget.spending'),
                 'fill' => true,
                 'data' => $spending,
                 'backgroundColor' => 'rgba(235, 54, 114, 0.2)' ,

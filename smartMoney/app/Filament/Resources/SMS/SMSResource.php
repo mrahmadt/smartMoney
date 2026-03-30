@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 
 class SMSResource extends Resource
 {
@@ -20,10 +21,35 @@ class SMSResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static ?string $modelLabel = 'SMS';
-    protected static ?string $pluralModelLabel = 'SMS';
     protected static ?string $recordTitleAttribute = 'SMS';
-protected static ?int $navigationSort = 12;
+    protected static ?int $navigationSort = 12;
+
+    public static function getNavigationGroup(): string|\UnitEnum|null
+    {
+        app()->setLocale(auth()->user()->language ?? 'en');
+        return __('menu.config');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return __('menu.sms');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('menu.sms');
+    }
+
+    public static function canAccess(): bool
+    {
+        return Auth::id() === 1;
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        $count = SMS::where('is_valid', false)->count();
+        return $count > 0 ? (string) $count : null;
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -50,10 +76,4 @@ protected static ?int $navigationSort = 12;
             'edit' => EditSMS::route('/{record}/edit'),
         ];
     }
-
-        public static function canAccess(): bool
-{
-    return auth()->user()->id == 1;
-}
-
 }

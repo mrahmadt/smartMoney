@@ -9,6 +9,7 @@ use App\Jobs\parseSMSJob;
     use Carbon\Carbon;
 use App\Models\Transaction;
 use App\Models\Alert;
+use App\Models\User;
 use App\Ai\Agents\parseSMS;
 use App\Services\fireflyIII;
 
@@ -35,6 +36,16 @@ class test extends Command
      */
     public function handle()
     {
+
+    $user = User::find(1);
+    Alert::createAlert(
+        title: 'Test Alert 2',
+        message: 'This is a test alert.',
+        user: $user,
+        data: ['foo' => 'bar']
+    );
+
+    exit;
 
     $date = '2026-0' . mt_rand(1,3) . '-' . mt_rand(1,28) . ' ' . mt_rand(10,23) . ':' . mt_rand(10,59) . ':' . mt_rand(10,59); 
 

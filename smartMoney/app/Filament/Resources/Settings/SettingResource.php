@@ -24,9 +24,23 @@ class SettingResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
 
-    protected static ?string $modelLabel = 'Setting';
-    protected static ?string $pluralModelLabel = 'Settings';
     protected static ?int $navigationSort = 20;
+
+    public static function getNavigationGroup(): string|\UnitEnum|null
+    {
+        app()->setLocale(auth()->user()->language ?? 'en');
+        return __('menu.config');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return __('menu.setting');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('menu.settings');
+    }
 
     public static function canAccess(): bool
     {
