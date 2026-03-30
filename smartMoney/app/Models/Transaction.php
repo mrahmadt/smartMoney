@@ -224,22 +224,8 @@ public function createTransaction($transaction, $SMS_sender)
         return $output;
     }
     
-    public static function abnormalTransaction($amount, $type = 'withdrawal', $transaction_journal_id = 41, $source_id = null, $destination_id = null, $category_id = null, $budget_id = null){
+    public static function abnormalTransaction($amount, $type = 'withdrawal', $abnormal_threshold_percentage, $transaction_journal_id, $source_id = null, $destination_id = null, $category_id = null, $budget_id = null){
 
-        $abnormal_threshold_percentage = Setting::getInt('abnormal_threshold_percentage_' . $type, 30);
-
-        if($source_id != null){
-            $abnormal_threshold_percentage = Setting::getInt('abnormal_threshold_percentage_source', 0);
-        }
-        if($destination_id != null){
-            $abnormal_threshold_percentage = Setting::getInt('abnormal_threshold_percentage_destination', 0);
-        }
-        if($category_id != null){
-            $abnormal_threshold_percentage = Setting::getInt('abnormal_threshold_percentage_category', 0);
-        }
-        if($budget_id != null){
-            $abnormal_threshold_percentage = Setting::getInt('abnormal_threshold_percentage_budget', 0);
-        }
         if($abnormal_threshold_percentage == 0) return false; // if threshold is 0, disable abnormal transaction detection
 
         $filter = [];
@@ -276,7 +262,8 @@ public function createTransaction($transaction, $SMS_sender)
         }
         if($total_transactions == 0) return false;
         $average_amount = array_sum(array_column($transactions, 'amount')) / $total_transactions;
-        $difference_percentage = abs($amount - $average_amount) / $average_amount * 100;
+        // $difference_percentage = abs($amount - $average_amount) / $average_amount * 100;
+        $difference_percentage = ($amount - $average_amount) / $average_amount * 100;
 
         if($difference_percentage >= $abnormal_threshold_percentage){
 
@@ -289,6 +276,7 @@ public function createTransaction($transaction, $SMS_sender)
 
         return false;
     }
+
     public static $cleanName = [
         //BURGER KING 214 Q07
        ['/(.*) \d{3,}?\s?\w{1,}\d{1,}$/m','$1'],

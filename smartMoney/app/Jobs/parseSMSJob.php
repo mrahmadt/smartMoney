@@ -163,20 +163,67 @@ class parseSMSJob implements ShouldQueue
             }
             $user = User::find($user_id);
             Alert::newTransaction(transaction: $status['attributes'], user: $user);
-            dd('not tested');
+
+            $budget_id = $status['attributes']->budget_id ?? null;
+            $category_id = $status['attributes']->category_id ?? null;
+
+            $source_id = $status['attributes']->source_id ?? null;
+            $destination_id = $status['attributes']->destination_id ?? null;
+            $type = $status['attributes']->type ?? ($transaction['type'] ?? null);
+
+            $abnormal_threshold_percentage = 0;
+
+            // 1) Category (only if category exists and setting is not zero)
+            if ($category_id !== null) {
+                $categoryThreshold = Setting::getInt('abnormal_threshold_percentage_category', 0);
+                if ($categoryThreshold !== 0) {
+                    $abnormal_threshold_percentage = $categoryThreshold;
+                }
+            }
+
+            // 2) Budget
+            if ($abnormal_threshold_percentage === 0 && $budget_id !== null) {
+                $budgetThreshold = Setting::getInt('abnormal_threshold_percentage_budget', 0);
+                if ($budgetThreshold !== 0) {
+                    $abnormal_threshold_percentage = $budgetThreshold;
+                }
+            }
+
+            // // 3) Destination
+            // if ($abnormal_threshold_percentage === 0 && $destination_id !== null) {
+            //     $destinationThreshold = Setting::getInt('abnormal_threshold_percentage_destination', 0);
+            //     if ($destinationThreshold !== 0) {
+            //         $abnormal_threshold_percentage = $destinationThreshold;
+            //     }
+            // }
+
+            // // 4) Source
+            // if ($abnormal_threshold_percentage === 0 && $source_id !== null) {
+            //     $sourceThreshold = Setting::getInt('abnormal_threshold_percentage_source', 0);
+            //     if ($sourceThreshold !== 0) {
+            //         $abnormal_threshold_percentage = $sourceThreshold;
+            //     }
+            // }
+
+            // 5) Type fallback
+            if ($abnormal_threshold_percentage === 0 && $type !== null) {
+                $abnormal_threshold_percentage = Setting::getInt('abnormal_threshold_percentage_' . $type, 30);
+            }
+
             $abnormalTransaction = Transaction::abnormalTransaction(
                 amount: $status['attributes']->amount,
-                transaction_journal_id: $status['attributes']->transaction_id,
+                type: $status['attributes']->type,
+                transaction_journal_id: $status['attributes']->transaction_journal_id,
+                abnormal_threshold_percentage: $abnormal_threshold_percentage,
                 // source_id: $status['source_id'] ?? null,
                 // destination_id: $status['destination_id'] ?? null,
-                category_id: $status['attributes']->category_id ?? null,
-                budget_id: $status['attributes']->budget_id ?? null,
+                category_id: $category_id,
+                budget_id: $budget_id,
             );
-
             if($abnormalTransaction){
                 Alert::abnormalTransaction(
                     user_id: $user_id,
-                    transaction_journal_id: $status['attributes']->transaction_id,
+                    transaction_journal_id: $status['attributes']->transaction_journal_id,
                     amount: $status['attributes']->amount,
                     average_amount: $abnormalTransaction['average_amount'],
                     difference_percentage: $abnormalTransaction['difference_percentage']

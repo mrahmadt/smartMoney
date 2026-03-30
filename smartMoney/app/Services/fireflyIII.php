@@ -16,6 +16,43 @@ class fireflyIII
         $this->fireflyIII_URL = config('app.FireFlyIII.url');
         $this->fireflyIII_API_TOKEN = config('app.FireFlyIII.token');
     }
+    public function createSubscription($options){
+        $defaultOptions = [
+            // 'name' => 'Rent',
+            // 'amount_min' => '123.45',
+            // 'amount_max' => '123.45',
+            // 'repeat_freq' => "monthly",
+            'date' => date('c'),
+            'active' => true,
+        ];
+        $options = array_merge($defaultOptions, $options);
+        $subscription = $this->callAPI(apiName:'subscriptions', parms:$options, method: 'POST');
+        if(isset($subscription->exception) || isset($subscription->errors)) return false;
+        return $subscription;
+    }
+    public function getSubscriptions($page = 1, $limit = 50){
+        $options = [
+            'limit' => $limit,
+            'page' => $page,
+        ];
+        $subscriptions = $this->callAPI(apiName:'subscriptions', parms:$options);
+        if(isset($subscriptions->exception)) return false;
+        return $subscriptions;
+    }
+    public function findSubscription($name = null){
+        $page = 1;
+        while(true){
+            $subscriptions = $this->getSubscriptions($page, 50);
+            if(!$subscriptions) return false;
+            foreach($subscriptions->data as $subscription){
+                if($subscription->attributes->name == $name) return $subscription;
+            }
+            if($subscriptions->meta->pagination->current_page == $subscriptions->meta->pagination->total_pages) break;
+            $page++;
+        }
+        return false;
+    }
+
     public function createBill($options){
         $defaultOptions = [
             // 'name' => 'Rent',
@@ -53,7 +90,7 @@ class fireflyIII
         return false;
     }
 
-    public function createRole($options){
+    public function createRule($options){
         $defaultOptions = [
             // 'name' => 'Rent',
             // 'amount_min' => '123.45',
@@ -64,12 +101,11 @@ class fireflyIII
         ];
         $options = array_merge($defaultOptions, $options);
         $role = $this->callAPI(apiName:'rules', parms:$options, method: 'POST');
-        // dd($options, $role);
         if(isset($role->exception) || isset($role->errors)) return false;
         return $role;
     }
 
-    public function getRoles($page = 1, $limit = 50){
+    public function getRules($page = 1, $limit = 50){
         $options = [
             'limit' => $limit,
             'page' => $page,
@@ -79,10 +115,10 @@ class fireflyIII
         return $rules;
     }
 
-    public function findRole($name = null){
+    public function findRule($name = null){
         $page = 1;
         while(true){
-            $rules = $this->getRoles($page, 50);
+            $rules = $this->getRules($page, 50);
             if(!$rules) return false;
             foreach($rules->data as $rule){
                 if($rule->attributes->title == $name) return $rule;
@@ -93,7 +129,7 @@ class fireflyIII
         return false;
     }
 
-    public function triggerRole($options){
+    public function triggerRule($options){
         $defaultOptions = [
             // 'id' => 'Rent',
             // 'start' => '123.45',
@@ -101,8 +137,8 @@ class fireflyIII
             // 'accounts' => [],
         ];
         $options = array_merge($defaultOptions, $options);
-        $triggerRole = $this->callAPI(apiName:'rules/' . $options['id'] . '/trigger', parms:$options, method: 'POST');
-        if(isset($triggerRole->exception)) return false;
+        $triggerRule = $this->callAPI(apiName:'rules/' . $options['id'] . '/trigger', parms:$options, method: 'POST');
+        if(isset($triggerRule->exception)) return false;
         return true;
     }
     public function createRuleGroup($options){
@@ -239,8 +275,12 @@ class fireflyIII
         return $transactions;
     }
 
-    public function getTransactions($start = null, $end = null, $filter = [], $limit = 1000, $page = 1, $type = null)
+    public $transactionsMeta = null;
+    public $transactionsLinks = null;
+    public function getTransactions($start = null, $end = null, $filter = [], $limit = 1000, $page = 1, $type = null, &$meta = [])
     {
+        $this->transactionsMeta = null;
+        $this->transactionsLinks = null;
         // dd($start, $end, $filter, $limit, $page, $type);
         if ($start == null) $start = date('Y-m-01');
         if ($end == null) $end = date('Y-m-t');
@@ -261,6 +301,8 @@ class fireflyIII
             }
             if ($include) $filteredTransactions[] = $transaction->attributes->transactions[0];
         }
+        $this->transactionsMeta = $transactions->meta ?? [];
+        $this->transactionsLinks = $transactions->links ?? [];
         return $filteredTransactions;
     }
 
@@ -357,6 +399,7 @@ class fireflyIII
         $total_pages = 1;
         $sender = strtolower($sender);
         $defaultAccount = false;
+        $acctCodeOnlyMatch = false;
 
         for ($i = 1; $i <= $total_pages; $i++) {
             $accounts = $this->callAPI('accounts', ['limit' => 50, 'type' => $accountType, 'page' => $i]);
@@ -368,19 +411,33 @@ class fireflyIII
             foreach ($accounts->data as $account) {
                 $SMSconfigs = $this->getAccountConfig($account->attributes);
                 if ($SMSconfigs == false || ($SMSconfigs['sender'] === null && empty($SMSconfigs['acctCodes']))) continue;
+                // 1. Best match: sender + acctCode both match
                 if ($SMSconfigs['sender'] !== null && strtolower($SMSconfigs['sender']) == $sender && in_array($accountCode, $SMSconfigs['acctCodes'])) {
                     if (isset($SMSconfigs['options'])) {
                         $account->_transactionOptions = $SMSconfigs['options'];
                     }
                     $account->_failback = false;
                     return $account;
-                } elseif ($SMSconfigs['sender'] !== null && strtolower($SMSconfigs['sender']) == $sender && $failIfAccountCodeNotFound && $defaultAccount == false) {
+                }
+                // 2. acctCode matches but account has no sender configured
+                if ($SMSconfigs['sender'] === null && in_array($accountCode, $SMSconfigs['acctCodes']) && $acctCodeOnlyMatch == false) {
+                    $acctCodeOnlyMatch = $account;
+                    if (isset($SMSconfigs['options'])) {
+                        $acctCodeOnlyMatch->_transactionOptions = $SMSconfigs['options'];
+                    }
+                }
+                // 3. Fallback: sender matches but acctCode doesn't
+                if ($SMSconfigs['sender'] !== null && strtolower($SMSconfigs['sender']) == $sender && $failIfAccountCodeNotFound && $defaultAccount == false) {
                     $defaultAccount = $account;
                     if (isset($SMSconfigs['options'])) {
                         $defaultAccount->_transactionOptions = $SMSconfigs['options'];
                     }
                 }
             }
+        }
+
+        if ($acctCodeOnlyMatch != false) {
+            return $acctCodeOnlyMatch;
         }
         
         if ($defaultAccount != false) {

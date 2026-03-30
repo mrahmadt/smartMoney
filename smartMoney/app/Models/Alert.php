@@ -37,8 +37,7 @@ class Alert extends Model
 
         $amount = number_format($transaction->amount, 2);
         $amount = str_replace('.00', '', $amount);
-        $currency = $transaction->currency ?? '';
-        dd($transaction);
+        $currency = $transaction->currency_symbol ?? '';
         if ($transaction->type == 'withdrawal') {
             $type = __('alert.spent');
         } elseif ($transaction->type == 'deposit') {
@@ -55,12 +54,6 @@ class Alert extends Model
         $title = $type . ' ' . $amount . ' ' . $currency;
         $message = $title . "\n" . $destination_name . $category_name . "\n" . $source_name;
 
-        dd(['title' => $title,
-            'message' => $message,
-            'user' => $user,
-            'data' => [
-                'transaction_id' => $transaction->transaction_journal_id
-            ]]);
         Alert::notify(
             title: $title,
             message: $message,

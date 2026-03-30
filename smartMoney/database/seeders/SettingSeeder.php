@@ -85,5 +85,11 @@ PROMPT,
         Setting::firstOrCreate(['key' => 'abnormal_threshold_percentage_destination'], ['value' => '20', 'description' => 'Abnormal threshold % per destination account (0 = disabled)']);
         Setting::firstOrCreate(['key' => 'abnormal_threshold_percentage_category'], ['value' => '20', 'description' => 'Abnormal threshold % per category (0 = disabled)']);
         Setting::firstOrCreate(['key' => 'abnormal_threshold_percentage_budget'], ['value' => '20', 'description' => 'Abnormal threshold % per budget (0 = disabled)']);
+
+        // Subscription Detector
+        Setting::firstOrCreate(['key' => 'SubscriptionDetector_enabled'], ['value' => 'true', 'description' => 'Enable or disable the subscription detector']);
+        Setting::firstOrCreate(['key' => 'SubscriptionDetector_go_back_days'], ['value' => '120', 'description' => 'Number of days to look back for recurring transactions']);
+        Setting::firstOrCreate(['key' => 'SubscriptionDetector_transactions_recurring_types'], ['value' => 'daily,weekly,monthly,quarterly,half-year,yearly', 'description' => 'Comma-separated list of recurring transaction types to detect']);
+        Setting::firstOrCreate(['key' => 'SubscriptionDetector_min_amount'], ['value' => '10', 'description' => 'Minimum transaction amount to consider as a subscription']);
     }
 }
