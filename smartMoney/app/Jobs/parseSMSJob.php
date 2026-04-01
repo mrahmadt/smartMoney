@@ -14,6 +14,8 @@ use App\Models\Account;
 use App\Models\Alert;
 use App\Models\User;
 use App\Models\Setting;
+use App\Models\CategoryMapping;
+use App\Models\PendingCategoryReview;
 use Carbon\Carbon;
 
 class parseSMSJob implements ShouldQueue
@@ -163,6 +165,33 @@ class parseSMSJob implements ShouldQueue
             Alert::newTransaction(transaction: $status['attributes'], user: $user);
 
             $budget_id = $status['attributes']->budget_id ?? null;
+
+            // Create pending category review if mapping has alternatives
+            $merchantName = $transaction['OtherAccountName'] ?? $transaction['OtherAccountNumber'] ?? null;
+            if ($merchantName) {
+                try {
+                    $mapping = CategoryMapping::lookupMapping($merchantName);
+                    if ($mapping && $mapping->hasAlternatives()) {
+                        PendingCategoryReview::create([
+                            'firefly_transaction_id' => $status['transaction_id'],
+                            'firefly_journal_id' => $status['attributes']->transaction_journal_id ?? $status['transaction_id'],
+                            'account_name' => $merchantName,
+                            'category_mapping_id' => $mapping->id,
+                            'current_category_id' => $mapping->category_id,
+                            'alternative_category_ids' => $mapping->alternative_category_ids,
+                            'user_id' => $localAccount?->user_id,
+                            'budget_id' => $localAccount?->budget_id ?? $budget_id,
+                            'transaction_amount' => $status['attributes']->amount ?? $transaction['amount'] ?? 0,
+                            'currency_code' => $status['attributes']->currency_code ?? $transaction['currency'] ?? null,
+                            'transaction_date' => $status['attributes']->date ?? now(),
+                            'transaction_description' => $status['attributes']->description ?? $transaction['description'] ?? '',
+                            'status' => 'pending',
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to create pending category review', ['error' => $e->getMessage(), 'merchant' => $merchantName]);
+                }
+            }
             // $category_id = $status['attributes']->category_id ?? null;
 
             // $source_id = $status['attributes']->source_id ?? null;

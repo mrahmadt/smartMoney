@@ -11,14 +11,19 @@ use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Schemas\Components\Actions;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
+use App\Ai\Agents\SuggestAlternativeCategories;
+use App\Models\Setting;
 
 class CategoryMappingResource extends Resource
 {
@@ -65,6 +70,104 @@ class CategoryMappingResource extends Resource
                     ->options(Category::orderBy('name')->pluck('name', 'id'))
                     ->searchable()
                     ->required(),
+                Select::make('alternative_category_ids')
+                    ->label(__('menu.alternative_categories'))
+                    ->multiple()
+                    ->searchable()
+                    ->options(Category::orderBy('name')->pluck('name', 'id'))
+                    ->helperText(__('menu.alternative_categories_hint')),
+                Actions::make([
+                    Action::make('suggestAlternatives')
+                        ->label(__('menu.suggest_alternatives'))
+                        ->icon('heroicon-o-sparkles')
+                        ->color('gray')
+                        ->visible(fn ($get) => $get('category_id') !== null)
+                        ->action(function ($get, $set, $livewire) {
+                            $categoryId = $get('category_id');
+                            if (!$categoryId) {
+                                Notification::make()
+                                    ->title(__('menu.select_category_first'))
+                                    ->warning()
+                                    ->send();
+                                return;
+                            }
+
+                            $category = Category::find($categoryId);
+                            if (!$category) return;
+
+                            $storeName = $get('account_name') ?? '';
+
+                            $exampleStores = CategoryMapping::where('category_id', $categoryId)
+                                ->where('account_name', '!=', $storeName)
+                                ->limit(10)
+                                ->pluck('account_name')
+                                ->toArray();
+
+                            $allCategories = Category::where('id', '!=', $categoryId)
+                                ->orderBy('name')
+                                ->pluck('name')
+                                ->toArray();
+
+                            if (empty($allCategories)) {
+                                Notification::make()
+                                    ->title(__('menu.no_categories_available'))
+                                    ->warning()
+                                    ->send();
+                                return;
+                            }
+
+                            try {
+                                $agent = new SuggestAlternativeCategories();
+                                $agent->categoryName = $category->name;
+                                $agent->storeName = $storeName;
+                                $agent->exampleStores = $exampleStores;
+                                $agent->allCategories = $allCategories;
+
+                                $model = Setting::get('parsesms_category_model');
+                                $response = $agent->prompt(
+                                    "Suggest alternative categories for store: {$storeName}",
+                                    model: $model
+                                );
+
+                                $output = json_decode($response->text, true);
+                                if (json_last_error() !== JSON_ERROR_NONE || !isset($output['categories'])) {
+                                    Notification::make()
+                                        ->title(__('menu.no_alternatives_suggested'))
+                                        ->info()
+                                        ->send();
+                                    return;
+                                }
+
+                                $suggestedNames = $output['categories'];
+                                $suggestedIds = Category::whereIn('name', $suggestedNames)->pluck('id')->toArray();
+
+                                if (empty($suggestedIds)) {
+                                    Notification::make()
+                                        ->title(__('menu.no_alternatives_suggested'))
+                                        ->info()
+                                        ->send();
+                                    return;
+                                }
+
+                                $current = $get('alternative_category_ids') ?? [];
+                                $merged = array_values(array_unique(array_merge($current, $suggestedIds)));
+                                $set('alternative_category_ids', $merged);
+
+                                $names = implode(', ', $suggestedNames);
+                                Notification::make()
+                                    ->title(__('menu.alternatives_suggested'))
+                                    ->body($names)
+                                    ->success()
+                                    ->send();
+                            } catch (\Exception $e) {
+                                Notification::make()
+                                    ->title(__('menu.ai_error'))
+                                    ->body($e->getMessage())
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
+                ]),
             ]);
     }
 

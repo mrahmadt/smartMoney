@@ -52,6 +52,10 @@ class Dashboard extends BaseDashboard
             $widgets[] = \App\Filament\Widgets\PinnedAlertsBanner::class;
         }
 
+        if (\App\Filament\Widgets\PendingCategoryReviewsWidget::canView()) {
+            $widgets[] = \App\Filament\Widgets\PendingCategoryReviewsWidget::class;
+        }
+
         return $widgets;
     }
 }
