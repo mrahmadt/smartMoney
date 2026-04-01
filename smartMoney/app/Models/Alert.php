@@ -5,8 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
+use App\Models\Setting;
 use App\Notifications\WebPush;
 use App\Notifications\AlertEmail;
+use App\Jobs\SendBatchedNotifications;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Services\fireflyIII;
 
@@ -22,11 +24,13 @@ class Alert extends Model
         'data',
         'is_read',
         'is_pinned',
+        'notified_at',
     ];
     protected $casts = [
         'is_read' => 'boolean',
         'is_pinned' => 'boolean',
         'data' => 'array',
+        'notified_at' => 'datetime',
     ];
 
     public function user(): BelongsTo
@@ -57,10 +61,11 @@ class Alert extends Model
         $title = $type . ' ' . $amount . ' ' . $currency;
         $message = $title . "\n" . $destination_name . $category_name . "\n" . $source_name;
 
-        Alert::notify(
+        Alert::createAlert(
             title: $title,
             message: $message,
             user: $user,
+            transaction_journal_id: $transaction->transaction_journal_id ?? null,
             data: [
                 'transaction_id' => $transaction->transaction_journal_id
             ]
@@ -89,20 +94,8 @@ class Alert extends Model
                 );
     }
 
-    public static function notify($title, $message, $user, $transaction_journal_id = null, $data = [])
-    {
-        $user->notify(new WebPush($title, $message));
-        if ($user->alert_via_email) {
-            $user->notify(new AlertEmail($title, $message));
-        }
-    }
-
     public static function createAlert($title, $message, $user, $transaction_journal_id = null, $data = [], $pin = false)
     {
-        $user->notify(new WebPush($title, $message));
-        // if ($user->alert_via_email) {
-        //     $user->notify(new AlertEmail($title, $message));
-        // }
         $alert = new Alert();
         $alert->title = $title;
         $alert->transaction_journal_id = $transaction_journal_id;
@@ -111,6 +104,13 @@ class Alert extends Model
         if ($data) $alert->data = $data;
         if ($pin) $alert->is_pinned = true;
         $alert->save();
+
+        $delay = (int) Setting::get('alert_batch_delay', 5);
+        if (config('queue.default') === 'sync') {
+            SendBatchedNotifications::dispatchSync($user->id);
+        } else {
+            SendBatchedNotifications::dispatch($user->id)->delay(now()->addSeconds($delay));
+        }
     }
 
     /**

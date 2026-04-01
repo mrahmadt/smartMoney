@@ -77,5 +77,8 @@ PROMPT,
         // SMS Cleanup
         Setting::firstOrCreate(['key' => 'cleanup_sms_days'], ['value' => '30', 'description' => 'Days to keep valid processed SMS before automatic cleanup']);
         Setting::firstOrCreate(['key' => 'cleanup_alerts_days'], ['value' => '30', 'description' => 'Days to keep read alerts before automatic cleanup']);
+
+        // Alert Batching
+        Setting::firstOrCreate(['key' => 'alert_batch_delay'], ['value' => '5', 'description' => 'Seconds to wait before sending batched alert notifications (combines multiple alerts into one)']);
     }
 }

@@ -26,4 +26,5 @@ return [
     'monthly_category_overspend_message' => 'This month, :category up :percentage%, +:amount',
     'monthly_destination_overspend_title' => 'Monthly Spend at :destination',
     'monthly_destination_overspend_message' => 'This is :multiplierx your normal monthly spend at :destination. Total: :amount, Average: :average_amount',
+    'batched_title' => ':count new alerts',
 ];

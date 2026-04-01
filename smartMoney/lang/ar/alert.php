@@ -26,4 +26,5 @@ return [
     'monthly_category_overspend_message' => 'هذا الشهر، :category ارتفع :percentage%، +:amount',
     'monthly_destination_overspend_title' => 'إنفاق شهري في :destination',
     'monthly_destination_overspend_message' => 'هذا :multiplier ضعف إنفاقك الشهري العادي في :destination. الإجمالي: :amount، المتوسط: :average_amount',
+    'batched_title' => ':count تنبيهات جديدة',
 ];
