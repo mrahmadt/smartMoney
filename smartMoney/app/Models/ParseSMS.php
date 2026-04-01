@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Services\fireflyIII;
 use App\Ai\Agents\SMSCategory;
 use App\Ai\Agents\parseSMS as parseSMSAgent;
 
@@ -35,8 +34,6 @@ class ParseSMS extends Model
 
         if (!in_array($transactionType, ['withdrawal', 'deposit', 'payment', 'transfer'])) return false;
 
-        $fireflyIII = new fireflyIII();
-
         if ($transactionType == 'withdrawal') {
             $output['category'] = 'Cash';
             return $output;
@@ -46,7 +43,7 @@ class ParseSMS extends Model
         } elseif (in_array($transactionType, ['deposit', 'payment'])) {
             $account = $matches['OtherAccountNumber'] ?? $matches['OtherAccountName'] ?? false;
             if ($account) {
-                $category = $fireflyIII->lookupCategory($account);
+                $category = CategoryMapping::lookup($account);
                 if ($category) {
                     $output['category'] = $category;
                     return $output;
@@ -65,6 +62,9 @@ class ParseSMS extends Model
             $output = json_decode($response->text, true);
             if (json_last_error() !== JSON_ERROR_NONE) {
                 return false;
+            }
+            if (isset($output['category']) && $output['category'] !== 'Unknown' && $merchant !== '') {
+                CategoryMapping::storeMapping($merchant, $output['category']);
             }
         }
         return $output;

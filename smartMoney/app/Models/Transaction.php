@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Services\fireflyIII;
 use Carbon\Carbon;
 use App\Models\Currency;
+use App\Models\Account;
 
 class Transaction extends Model
 {
@@ -125,24 +126,20 @@ public function createTransaction($transaction, $SMS_sender)
             unset($transaction['category_id']);
         }
 
-        $myaccount = $this->fireflyIII->getAccountBySMSAcctCode(sender: $this->SMS_sender->sender, accountCode: $transaction['MyAccountNumber'], failIfAccountCodeNotFound: true);
+        $myaccount = Account::findBySenderAndShortcode(senderName: $this->SMS_sender->sender, shortcode: $transaction['MyAccountNumber']);
         if (!$myaccount) {
-            $output['error'] = 'MyAccountNumber does not match any account in FireFly III';
+            $output['error'] = 'MyAccountNumber does not match any account';
             return $output;
         }
 
-        $transaction['source_id'] = $myaccount->id;
+        $transaction['source_id'] = $myaccount->firefly_account_id;
 
-        $accountCode = $transaction['MyAccountNumber'];
-        $options = $myaccount->_transactionOptions ?? [];
-        if (isset($options[$accountCode]['transactions_budget_id'])) {
-            $transaction['budget_id'] = $options[$accountCode]['transactions_budget_id'];
-        } elseif (isset($options['transactions_budget_id'])) {
-            $transaction['budget_id'] = $options['transactions_budget_id'];
+        if ($myaccount->budget_id) {
+            $transaction['budget_id'] = $myaccount->budget_id;
         }
 
         if (empty($transaction['currency'])) {
-            $transaction['currency'] = $myaccount->attributes->currency_code ?? '';
+            $transaction['currency'] = $myaccount->currency_code ?? '';
         }
 
         if (empty($transaction['currency'])) {
@@ -150,7 +147,7 @@ public function createTransaction($transaction, $SMS_sender)
             return $output;
         }
         if (empty($transaction['feesCurrency']) && isset($transaction['fees'])) {
-            $transaction['feesCurrency'] = $myaccount->attributes->currency_code ?? '';
+            $transaction['feesCurrency'] = $myaccount->currency_code ?? '';
         }
 
         $fees = 0.0;
@@ -178,13 +175,13 @@ public function createTransaction($transaction, $SMS_sender)
 
 
         $amount = (float)$transaction['amount'] + $fees;
-        $transaction['currency_code'] = strtoupper($myaccount->attributes->currency_code);
+        $transaction['currency_code'] = strtoupper($myaccount->currency_code);
 
-        if (strtoupper($transaction['currency']) !== strtoupper($myaccount->attributes->currency_code)) {
+        if (strtoupper($transaction['currency']) !== strtoupper($myaccount->currency_code)) {
             $convertedAmount = Currency::exchangeRate(
                 amount: $amount,
                 from: strtoupper($transaction['currency']),
-                to: strtoupper($myaccount->attributes->currency_code)
+                to: strtoupper($myaccount->currency_code)
             );
             if ($convertedAmount === false) {
                 $output['error'] = 'Failed to convert amount to account currency';
@@ -200,7 +197,6 @@ public function createTransaction($transaction, $SMS_sender)
         $transaction['destination_name'] = $transaction['OtherAccountName'] ?? $transaction['OtherAccountNumber'] ?? 'Unknown';
 
         $transaction['tags'][] = $transaction['MyAccountNumber'];
-        if($myaccount->_failback) $transaction['tags'][] = '_failback';
         unset($transaction['currency']);
         unset($transaction['feesCurrency']);
         unset($transaction['MyAccountNumber']);
@@ -257,9 +253,9 @@ public function createTransaction($transaction, $SMS_sender)
         // calculate average amount from $transactions[*]['amount']
         $total_transactions = count($transactions);
 
-        if($total_transactions == 0) {
-            echo "No transactions found for the given criteria.\n";
-        }
+        // if($total_transactions == 0) {
+        //     echo "No transactions found for the given criteria.\n";
+        // }
         if($total_transactions == 0) return false;
         $average_amount = array_sum(array_column($transactions, 'amount')) / $total_transactions;
         // $difference_percentage = abs($amount - $average_amount) / $average_amount * 100;
@@ -271,6 +267,213 @@ public function createTransaction($transaction, $SMS_sender)
                 'amount' => $amount,
                 'average_amount' => $average_amount,
                 'difference_percentage' => $difference_percentage
+            ];
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if a single transaction amount is abnormal for a destination.
+     * Requires both % threshold AND minimum SAR diff to be exceeded.
+     * 
+     * This is 40x your normal spend at Aldrewes. Amount: 30,000, Average: 750
+     */
+    public static function abnormalDestinationAmount($amount, $destination_id, $transaction_journal_id, $budget_id = null)
+    {
+        $threshold = Setting::getInt('abnormal_threshold_percentage_destination', 20);
+        $minDiff = Setting::getInt('abnormal_threshold_percentage_destination_min', 50);
+
+        if ($threshold == 0) return false;
+
+        $result = self::abnormalTransaction(
+            amount: $amount,
+            type: 'withdrawal',
+            abnormal_threshold_percentage: $threshold,
+            transaction_journal_id: $transaction_journal_id,
+            destination_id: $destination_id,
+            budget_id: $budget_id,
+        );
+
+        if (!$result) return false;
+
+        $diffAmount = abs($result['amount'] - $result['average_amount']);
+        if ($diffAmount < $minDiff) return false;
+
+        $result['difference_amount'] = $diffAmount;
+        $result['multiplier'] = $result['average_amount'] > 0
+            ? round($result['amount'] / $result['average_amount'], 1)
+            : 0;
+
+        return $result;
+    }
+
+    /**
+     * Check if today's transaction count for a category is unusually high.
+     * Compares today's count to average daily count over N months.
+     * 2 Transportation transactions today, which is unusual (average: 0.4 per day)
+     */
+    public static function unusualCategoryFrequency($categoryName, $date = null, $budget_id = null)
+    {
+        $date = $date ?? date('Y-m-d');
+        $multiplier = Setting::getInt('abnormal_frequency_multiplier', 2);
+        $months = Setting::getInt('average_transactions_months', 3);
+
+        $firefly = new fireflyIII();
+
+        $filter = ['category_name' => $categoryName];
+        if ($budget_id) $filter['budget_id'] = $budget_id;
+
+        // Count today's transactions for this category
+        $todayTransactions = $firefly->getTransactions(
+            start: $date, end: $date, type: 'withdrawal',
+            filter: $filter, limit: 200
+        );
+        $todayCount = is_array($todayTransactions) ? count($todayTransactions) : 0;
+        if ($todayCount < 2) return false;
+        // Count total transactions for this category over N months
+        $startDate = date('Y-m-d', strtotime("-{$months} months", strtotime($date)));
+        $totalCount = 0;
+        for ($page = 1; $page <= 10; $page++) {
+            $response = $firefly->getTransactions(
+                start: $date, end: $startDate, type: 'withdrawal',
+                filter: $filter, limit: 500, page: $page
+            );
+            if (!$response) break;
+            $totalCount += count($response);
+        }
+
+        $totalDays = max(1, (strtotime($date) - strtotime($startDate)) / 86400);
+        $averageDaily = $totalCount / $totalDays;
+
+        if ($averageDaily <= 0) return false;
+        if ($todayCount >= $multiplier * $averageDaily) {
+            return [
+                'today_count' => $todayCount,
+                'average_daily_count' => round($averageDaily, 1),
+            ];
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if today's transaction count for a destination is unusually high.
+     */
+    public static function unusualDestinationFrequency($destinationName, $date = null, $budget_id = null)
+    {
+        $date = $date ?? date('Y-m-d');
+        $multiplier = Setting::getInt('abnormal_frequency_multiplier', 2);
+        $months = Setting::getInt('average_transactions_months', 3);
+
+        $firefly = new fireflyIII();
+
+        $filter = ['destination_name' => $destinationName];
+        if ($budget_id) $filter['budget_id'] = $budget_id;
+
+        $todayTransactions = $firefly->getTransactions(
+            start: $date, end: $date, type: 'withdrawal',
+            filter: $filter, limit: 200
+        );
+        $todayCount = is_array($todayTransactions) ? count($todayTransactions) : 0;
+        if ($todayCount < 2) return false;
+
+        $startDate = date('Y-m-d', strtotime("-{$months} months", strtotime($date)));
+        $totalCount = 0;
+        for ($page = 1; $page <= 10; $page++) {
+            $response = $firefly->getTransactions(
+                start: $date, end: $startDate, type: 'withdrawal',
+                filter: $filter, limit: 500, page: $page
+            );
+            if (!$response) break;
+            $totalCount += count($response);
+        }
+
+        $totalDays = max(1, (strtotime($date) - strtotime($startDate)) / 86400);
+        $averageDaily = $totalCount / $totalDays;
+
+        if ($averageDaily <= 0) return false;
+        if ($todayCount >= $multiplier * $averageDaily) {
+            return [
+                'today_count' => $todayCount,
+                'average_daily_count' => round($averageDaily, 1),
+            ];
+        }
+
+        return false;
+    }
+
+    /**
+     * Compare spending for a period against average of past periods.
+     * Returns result if both % and min amount thresholds are exceeded.
+     *
+     * @param array $filter e.g. ['category_name' => 'Dining'] or ['destination_name' => 'Starbucks']
+     * @param string $currentStart Start of current period (Y-m-d)
+     * @param string $currentEnd End of current period (Y-m-d)
+     * @param int $periodsBack How many past periods to average
+     * @param int $periodDays Length of each period in days (1=daily, 7=weekly, 30=monthly)
+     * @param int $thresholdPercent Minimum % above average
+     * @param int $thresholdMin Minimum amount above average
+     */
+    public static function periodSpendingComparison(array $filter, string $currentStart, string $currentEnd, int $periodsBack, int $periodDays, int $thresholdPercent, int $thresholdMin, $budget_id = null)
+    {
+        if ($thresholdPercent == 0) return false;
+
+        if ($budget_id) $filter['budget_id'] = $budget_id;
+
+        $firefly = new fireflyIII();
+
+        // Current period total
+        $currentTotal = 0;
+        for ($page = 1; $page <= 10; $page++) {
+            $response = $firefly->getTransactions(
+                start: $currentEnd, end: $currentStart, type: 'withdrawal',
+                filter: $filter, limit: 500, page: $page
+            );
+            if (!$response) break;
+            foreach ($response as $t) {
+                $currentTotal += abs((float)$t->amount);
+            }
+        }
+
+        if ($currentTotal == 0) return false;
+
+        // Past periods totals
+        $pastTotals = [];
+        for ($i = 1; $i <= $periodsBack; $i++) {
+            $pEnd = date('Y-m-d', strtotime("-" . ($i * $periodDays) . " days", strtotime($currentEnd)));
+            $pStart = date('Y-m-d', strtotime("-" . $periodDays . " days", strtotime($pEnd)));
+
+            $periodTotal = 0;
+            for ($page = 1; $page <= 10; $page++) {
+                $response = $firefly->getTransactions(
+                    start: $pEnd, end: $pStart, type: 'withdrawal',
+                    filter: $filter, limit: 500, page: $page
+                );
+                if (!$response) break;
+                foreach ($response as $t) {
+                    $periodTotal += abs((float)$t->amount);
+                }
+            }
+            $pastTotals[] = $periodTotal;
+        }
+
+        $pastTotals = array_filter($pastTotals, fn($t) => $t > 0);
+        if (count($pastTotals) == 0) return false;
+
+        $averageTotal = array_sum($pastTotals) / count($pastTotals);
+        if ($averageTotal == 0) return false;
+
+        $diffAmount = $currentTotal - $averageTotal;
+        $diffPercent = ($diffAmount / $averageTotal) * 100;
+
+        if ($diffPercent >= $thresholdPercent && $diffAmount >= $thresholdMin) {
+            return [
+                'current_total' => round($currentTotal, 2),
+                'average_total' => round($averageTotal, 2),
+                'difference_percentage' => round($diffPercent, 1),
+                'difference_amount' => round($diffAmount, 2),
+                'multiplier' => round($currentTotal / $averageTotal, 1),
             ];
         }
 

@@ -112,4 +112,30 @@ class Alert extends Model
         if ($pin) $alert->is_pinned = true;
         $alert->save();
     }
+
+    /**
+     * Create alert for user + copy to admin (user 1) if different.
+     */
+    public static function createAlertWithAdminCopy($title, $message, $user_id, $transaction_journal_id = null, $data = [], $pin = false)
+    {
+        $user = is_numeric($user_id) ? User::find($user_id) : $user_id;
+        $userId = $user ? $user->id : 1;
+
+        if (!$user) {
+            $user = User::find(1);
+        }
+        if (!$user) return;
+
+        app()->setLocale($user->language ?? 'en');
+        self::createAlert($title, $message, $user, $transaction_journal_id, $data, $pin);
+
+        // Copy to admin if different user
+        if ($userId !== 1) {
+            $admin = User::find(1);
+            if ($admin) {
+                app()->setLocale($admin->language ?? 'en');
+                self::createAlert($title, $message, $admin, $transaction_journal_id, $data, $pin);
+            }
+        }
+    }
 }

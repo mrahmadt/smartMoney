@@ -18,25 +18,7 @@ You are a financial transaction categorizer. Given a bank SMS notification, iden
 Focus on the merchant/store name first. If the SMS mentions a known brand or store, use that to infer the category.
 
 Category mapping hints:
-- Cafe: coffee shops (Starbucks, Dunkin, Tim Hortons, Costa, Caribou)
-- Groceries: supermarkets, grocery stores (Tamimi, Panda, Carrefour, Danube, Lulu, Othaim, BinDawood)
-- Shopping: department stores, general retail (Target, Walmart, Costco, Sam's Club, SACO)
-- Dining: restaurants, fast food (Burger King, McDonald's, KFC, Herfy, Kudu, Pizza Hut, Dominos, Shawarmer)
-- Transportation: ride-hailing (Uber, Careem), fuel stations (Aldrees, Petromin, Naft), parking, toll fees
-- Utilities: electricity (SEC), water (NWC), telecom (STC, Mobily, Zain)
-- Healthcare: pharmacies (CVS, Nahdi, Al-Dawaa, Walgreens), hospitals, clinics, medical labs, dentists
-- Entertainment: cinemas (AMC, VOX, Muvi), gaming, theme parks, streaming (Netflix, Spotify, Apple, Disney+, YouTube Premium), app stores
-- Online Shopping: e-commerce (Amazon, Noon, Shein, AliExpress, Jarir, eXtra)
-- Education: schools, universities, courses, bookstores, tutoring, training
-- Travel: airlines (Saudia, flynas, Air Arabia), hotels, booking platforms (Booking.com, Airbnb), car rentals
-- Personal Care: salons, barbers, spas, beauty products, perfumes
-- Clothing: fashion stores (Zara, H&M, Centrepoint, Max, Nike, Adidas)
-- Home & Furniture: IKEA, Home Centre, Pottery Barn, home maintenance
-- Government: government fees, Absher, MOI, traffic fines, visa fees
-- Insurance: car insurance, medical insurance, travel insurance
-- Charity: donations, Zakah, sadaqah
-- Cash: ATM withdrawals
-- Transfer: bank transfers between accounts
+%categories_prompts%
 PROMPT,
                 'description' => 'Full system prompt used by the AI agent to categorize SMS transactions',
             ]
@@ -80,16 +62,20 @@ PROMPT,
 
         // Abnormal Transaction Detection
         Setting::firstOrCreate(['key' => 'average_transactions_months'], ['value' => '3', 'description' => 'Number of months to look back when calculating average transaction amounts']);
-        Setting::firstOrCreate(['key' => 'abnormal_threshold_percentage_withdrawal'], ['value' => '0', 'description' => 'Abnormal threshold % for withdrawals (0 = disabled)']);
-        Setting::firstOrCreate(['key' => 'abnormal_threshold_percentage_source'], ['value' => '20', 'description' => 'Abnormal threshold % per source account (0 = disabled)']);
         Setting::firstOrCreate(['key' => 'abnormal_threshold_percentage_destination'], ['value' => '20', 'description' => 'Abnormal threshold % per destination account (0 = disabled)']);
         Setting::firstOrCreate(['key' => 'abnormal_threshold_percentage_category'], ['value' => '20', 'description' => 'Abnormal threshold % per category (0 = disabled)']);
-        Setting::firstOrCreate(['key' => 'abnormal_threshold_percentage_budget'], ['value' => '20', 'description' => 'Abnormal threshold % per budget (0 = disabled)']);
+        Setting::firstOrCreate(['key' => 'abnormal_threshold_percentage_destination_min'], ['value' => '50', 'description' => 'Minimum amount difference to trigger destination abnormal alert']);
+        Setting::firstOrCreate(['key' => 'abnormal_threshold_percentage_category_min'], ['value' => '100', 'description' => 'Minimum amount difference to trigger category abnormal alert']);
+        Setting::firstOrCreate(['key' => 'abnormal_frequency_multiplier'], ['value' => '2', 'description' => 'Alert if daily transaction count >= X times average daily count']);
 
         // Subscription Detector
         Setting::firstOrCreate(['key' => 'SubscriptionDetector_enabled'], ['value' => 'true', 'description' => 'Enable or disable the subscription detector']);
         Setting::firstOrCreate(['key' => 'SubscriptionDetector_go_back_days'], ['value' => '120', 'description' => 'Number of days to look back for recurring transactions']);
         Setting::firstOrCreate(['key' => 'SubscriptionDetector_transactions_recurring_types'], ['value' => 'daily,weekly,monthly,quarterly,half-year,yearly', 'description' => 'Comma-separated list of recurring transaction types to detect']);
         Setting::firstOrCreate(['key' => 'SubscriptionDetector_min_amount'], ['value' => '10', 'description' => 'Minimum transaction amount to consider as a subscription']);
+
+        // SMS Cleanup
+        Setting::firstOrCreate(['key' => 'cleanup_sms_days'], ['value' => '30', 'description' => 'Days to keep valid processed SMS before automatic cleanup']);
+        Setting::firstOrCreate(['key' => 'cleanup_alerts_days'], ['value' => '30', 'description' => 'Days to keep read alerts before automatic cleanup']);
     }
 }

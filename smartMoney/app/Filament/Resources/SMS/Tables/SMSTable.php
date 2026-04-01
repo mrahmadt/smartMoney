@@ -5,11 +5,13 @@ namespace App\Filament\Resources\SMS\Tables;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\Action;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use App\Jobs\parseSMSJob;
 
 class SMSTable
 {
@@ -46,6 +48,16 @@ class SMSTable
                     ->options(fn () => \App\Models\SMS::query()->distinct()->pluck('sender', 'sender')->toArray()),
             ])
             ->recordActions([
+                Action::make('reprocess')
+                    ->label('Process')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->visible(fn ($record) => !$record->is_valid && $record->is_processed)
+                    ->requiresConfirmation()
+                    ->action(function ($record) {
+                        $record->update(['is_valid' => true, 'is_processed' => false, 'errors' => null]);
+                        parseSMSJob::dispatch($record);
+                    }),
                 EditAction::make(),
             ])
             ->toolbarActions([

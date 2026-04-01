@@ -11,6 +11,7 @@ use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Attributes\Model;
 use Laravel\Ai\Promptable;
 use App\Models\Setting;
+use App\Models\Category;
 use Stringable;
 
 #[Model("gpt-5-mini")]
@@ -53,7 +54,19 @@ Category mapping hints:
 - Transfer: bank transfers between accounts
 PROMPT;
 
-        return Setting::get('category_prompt', $defaultPrompt);
+        $prompt = Setting::get('category_prompt', $defaultPrompt);
+
+        if (str_contains($prompt, '%categories_prompts%')) {
+            $categories = Category::where('enable_prompt', true)
+                ->whereNotNull('category_prompt')
+                ->where('category_prompt', '!=', '')
+                ->get();
+
+            $lines = $categories->map(fn ($cat) => "- {$cat->name}: {$cat->category_prompt}")->implode("\n");
+            $prompt = str_replace('%categories_prompts%', $lines, $prompt);
+        }
+
+        return $prompt;
     }
 
     /**

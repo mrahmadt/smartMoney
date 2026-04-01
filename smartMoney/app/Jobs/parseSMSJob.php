@@ -10,9 +10,11 @@ use App\Models\SMS;
 use App\Models\ParseSMS;
 use App\Models\Transaction;
 use App\Models\SMSSender;
+use App\Models\Account;
 use App\Models\Alert;
 use App\Models\User;
 use App\Models\Setting;
+use Carbon\Carbon;
 
 class parseSMSJob implements ShouldQueue
 {
@@ -155,79 +157,77 @@ class parseSMSJob implements ShouldQueue
             print('Transaction created successfully with ID: ' . $status['transaction_id']);
             $this->sms->update(['is_processed' => true]);
 
-            $account = $this->fireflyIII->getAccount($status['attributes']->source_id);
-            $accountCode = $this->fireflyIII->getAccountConfig($account->data->attributes);
-            $user_id = 1;
-            if($accountCode['user_id']){
-                $user_id = $accountCode['user_id'];
-            }
+            $localAccount = Account::where('firefly_account_id', $status['attributes']->source_id)->first();
+            $user_id = $localAccount?->user_id ?? 1;
             $user = User::find($user_id);
             Alert::newTransaction(transaction: $status['attributes'], user: $user);
 
             $budget_id = $status['attributes']->budget_id ?? null;
-            $category_id = $status['attributes']->category_id ?? null;
+            // $category_id = $status['attributes']->category_id ?? null;
 
-            $source_id = $status['attributes']->source_id ?? null;
+            // $source_id = $status['attributes']->source_id ?? null;
             $destination_id = $status['attributes']->destination_id ?? null;
-            $type = $status['attributes']->type ?? ($transaction['type'] ?? null);
+            // $type = $status['attributes']->type ?? ($transaction['type'] ?? null);
 
-            $abnormal_threshold_percentage = 0;
+            // $abnormal_threshold_percentage = 0;
 
-            // 1) Category (only if category exists and setting is not zero)
-            if ($category_id !== null) {
-                $categoryThreshold = Setting::getInt('abnormal_threshold_percentage_category', 0);
-                if ($categoryThreshold !== 0) {
-                    $abnormal_threshold_percentage = $categoryThreshold;
-                }
-            }
 
-            // 2) Budget
-            if ($abnormal_threshold_percentage === 0 && $budget_id !== null) {
-                $budgetThreshold = Setting::getInt('abnormal_threshold_percentage_budget', 0);
-                if ($budgetThreshold !== 0) {
-                    $abnormal_threshold_percentage = $budgetThreshold;
-                }
-            }
-
-            // // 3) Destination
-            // if ($abnormal_threshold_percentage === 0 && $destination_id !== null) {
-            //     $destinationThreshold = Setting::getInt('abnormal_threshold_percentage_destination', 0);
-            //     if ($destinationThreshold !== 0) {
-            //         $abnormal_threshold_percentage = $destinationThreshold;
-            //     }
-            // }
-
-            // // 4) Source
-            // if ($abnormal_threshold_percentage === 0 && $source_id !== null) {
-            //     $sourceThreshold = Setting::getInt('abnormal_threshold_percentage_source', 0);
-            //     if ($sourceThreshold !== 0) {
-            //         $abnormal_threshold_percentage = $sourceThreshold;
-            //     }
-            // }
-
-            // 5) Type fallback
-            if ($abnormal_threshold_percentage === 0 && $type !== null) {
-                $abnormal_threshold_percentage = Setting::getInt('abnormal_threshold_percentage_' . $type, 30);
-            }
-
-            $abnormalTransaction = Transaction::abnormalTransaction(
-                amount: $status['attributes']->amount,
-                type: $status['attributes']->type,
-                transaction_journal_id: $status['attributes']->transaction_journal_id,
-                abnormal_threshold_percentage: $abnormal_threshold_percentage,
-                // source_id: $status['source_id'] ?? null,
-                // destination_id: $status['destination_id'] ?? null,
-                category_id: $category_id,
-                budget_id: $budget_id,
-            );
-            if($abnormalTransaction){
-                Alert::abnormalTransaction(
-                    user_id: $user_id,
-                    transaction_journal_id: $status['attributes']->transaction_journal_id,
+            // Real-time check: Destination amount abnormal
+            // This is 40x your normal spend at Aldrewes. Amount: 30,000, Average: 750
+            if ($destination_id) {
+                $destAbnormal = Transaction::abnormalDestinationAmount(
                     amount: $status['attributes']->amount,
-                    average_amount: $abnormalTransaction['average_amount'],
-                    difference_percentage: $abnormalTransaction['difference_percentage']
+                    destination_id: $destination_id,
+                    transaction_journal_id: $status['attributes']->transaction_journal_id,
+                    budget_id: $budget_id,
                 );
+                if ($destAbnormal) {
+                    $destName = $status['attributes']->destination_name ?? 'Unknown';
+                    app()->setLocale($user->language ?? 'en');
+                    Alert::createAlertWithAdminCopy(
+                        title: __('alert.abnormal_destination_title', ['destination' => $destName]),
+                        message: __('alert.abnormal_destination_message', [
+                            'multiplier' => $destAbnormal['multiplier'],
+                            'destination' => $destName,
+                            'amount' => str_replace('.00','',number_format($destAbnormal['amount'], 2)),
+                            'average_amount' => str_replace('.00','',number_format($destAbnormal['average_amount'], 2)),
+                        ]),
+                        user_id: $user_id,
+                        transaction_journal_id: $status['attributes']->transaction_journal_id,
+                        data: $destAbnormal,
+                        pin: true,
+                    );
+                }
+            }
+
+            // Real-time check: Unusual category frequency today
+            // 2 Transportation transactions today, which is unusual (average: 0.4 per day)
+            $categoryName = $status['attributes']->category_name ?? null;
+            if ($categoryName) {
+                if(isset($status['attributes']->date)){
+                $date = Carbon::parse($status['attributes']->date)->format('Y-m-d');
+                } else {
+                    $date = null;
+                }
+                $freqResult = Transaction::unusualCategoryFrequency(
+                    categoryName: $categoryName,
+                    date: $date,
+                    budget_id: $budget_id,
+                );
+                if ($freqResult) {
+                    app()->setLocale($user->language ?? 'en');
+                    Alert::createAlertWithAdminCopy(
+                        title: __('alert.unusual_category_frequency_title', ['category' => $categoryName]),
+                        message: __('alert.unusual_category_frequency_message', [
+                            'count' => $freqResult['today_count'],
+                            'category' => $categoryName,
+                            'average' => str_replace('.00','',$freqResult['average_daily_count']),
+                        ]),
+                        user_id: $user_id,
+                        data: $freqResult,
+                        pin: true,
+                    );
+                }
             }
 
         } else {
