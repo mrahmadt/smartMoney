@@ -43,7 +43,12 @@ class AlertResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $count = static::getModel()::where('is_read', false)->where('user_id', auth()->id())->count();
+        $count = static::getModel()::where('is_read', false)
+            ->where('user_id', auth()->id())
+            ->where(function ($q) {
+                $q->whereNull('topic')->orWhere('topic', '!=', 'transaction');
+            })
+            ->count();
         return $count > 0 ? (string) $count : null;
     }
 

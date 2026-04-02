@@ -64,4 +64,11 @@ return [
     'default_changed' => 'تم تغيير الفئة الافتراضية لـ :store إلى :category',
     'update_failed' => 'فشل تحديث المعاملة',
     'review_already_processed' => 'تمت معالجة هذه المراجعة بالفعل',
+
+    // Alert topics
+    'topic' => 'الموضوع',
+    'topic_transaction' => 'معاملة',
+    'topic_abnormal' => 'غير طبيعي',
+    'topic_report' => 'تقرير',
+    'topic_subscription' => 'اشتراك',
 ];

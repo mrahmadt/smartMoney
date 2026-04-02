@@ -8,6 +8,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 class AlertsTable
@@ -16,10 +17,24 @@ class AlertsTable
     {
         app()->setLocale(auth()->user()->language ?? 'en');
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->where(function ($q) {
+                $q->whereNull('topic')->orWhere('topic', '!=', 'transaction');
+            }))
             ->columns([
                 TextColumn::make('title')
                     ->label(__('widget.title'))
                     ->weight(fn ($record) => $record->is_read == 0 ? 'bold' : 'normal'),
+                TextColumn::make('topic')
+                    ->label(__('menu.topic'))
+                    ->badge()
+                    ->color(fn ($state) => match ($state) {
+                        'transaction' => 'gray',
+                        'abnormal' => 'danger',
+                        'report' => 'warning',
+                        'subscription' => 'info',
+                        default => 'gray',
+                    })
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('message')
                     ->label(__('widget.message'))
                     ->limit(150)
@@ -38,7 +53,14 @@ class AlertsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                SelectFilter::make('topic')
+                    ->label(__('menu.topic'))
+                    ->options([
+                        'transaction' => __('menu.topic_transaction'),
+                        'abnormal' => __('menu.topic_abnormal'),
+                        'report' => __('menu.topic_report'),
+                        'subscription' => __('menu.topic_subscription'),
+                    ]),
             ])
             ->recordActions([
             ])

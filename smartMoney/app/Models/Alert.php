@@ -25,6 +25,7 @@ class Alert extends Model
         'is_read',
         'is_pinned',
         'notified_at',
+        'topic',
     ];
     protected $casts = [
         'is_read' => 'boolean',
@@ -68,7 +69,8 @@ class Alert extends Model
             transaction_journal_id: $transaction->transaction_journal_id ?? null,
             data: [
                 'transaction_id' => $transaction->transaction_journal_id
-            ]
+            ],
+            topic: 'transaction'
         );
     }
     public static function abnormalTransaction($user_id, $transaction_journal_id, $amount, $average_amount, $difference_percentage){
@@ -90,11 +92,12 @@ class Alert extends Model
                         'amount' => $amount,
                         'average_amount' => $average_amount,
                         'difference_percentage' => $difference_percentage
-                    ]
+                    ],
+                    topic: 'abnormal'
                 );
     }
 
-    public static function createAlert($title, $message, $user, $transaction_journal_id = null, $data = [], $pin = false)
+    public static function createAlert($title, $message, $user, $transaction_journal_id = null, $data = [], $pin = false, $topic = null)
     {
         $alert = new Alert();
         $alert->title = $title;
@@ -103,6 +106,7 @@ class Alert extends Model
         $alert->message = $message;
         if ($data) $alert->data = $data;
         if ($pin) $alert->is_pinned = true;
+        if ($topic) $alert->topic = $topic;
         $alert->save();
 
         $delay = (int) Setting::get('alert_batch_delay', 5);
@@ -116,7 +120,7 @@ class Alert extends Model
     /**
      * Create alert for user + copy to admin (user 1) if different.
      */
-    public static function createAlertWithAdminCopy($title, $message, $user_id, $transaction_journal_id = null, $data = [], $pin = false)
+    public static function createAlertWithAdminCopy($title, $message, $user_id, $transaction_journal_id = null, $data = [], $pin = false, $topic = null)
     {
         $user = is_numeric($user_id) ? User::find($user_id) : $user_id;
         $userId = $user ? $user->id : 1;
@@ -127,14 +131,14 @@ class Alert extends Model
         if (!$user) return;
 
         app()->setLocale($user->language ?? 'en');
-        self::createAlert($title, $message, $user, $transaction_journal_id, $data, $pin);
+        self::createAlert($title, $message, $user, $transaction_journal_id, $data, $pin, $topic);
 
         // Copy to admin if different user
         if ($userId !== 1) {
             $admin = User::find(1);
             if ($admin) {
                 app()->setLocale($admin->language ?? 'en');
-                self::createAlert($title, $message, $admin, $transaction_journal_id, $data, $pin);
+                self::createAlert($title, $message, $admin, $transaction_journal_id, $data, $pin, $topic);
             }
         }
     }

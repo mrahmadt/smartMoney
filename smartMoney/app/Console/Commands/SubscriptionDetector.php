@@ -30,7 +30,7 @@ class SubscriptionDetector extends Command
     public function handle()
     {
         if(!Setting::getBool('SubscriptionDetector_enabled', true)) {
-            $this->info('Bill Detector is disabled');
+            $this->info('Subscription Detector is disabled');
             return;
         }
         $fireflyIII = new fireflyIII();
@@ -72,9 +72,10 @@ class SubscriptionDetector extends Command
                     if($user){
                         app()->setLocale($user->language ?? 'en');
                         Alert::createAlert(
-                            __('alert.subscription_created_title'),
-                            __('alert.subscription_created_message', ['name' => $subscriptionTitle]),
-                            $user
+                            title: __('alert.subscription_created_title'),
+                            message: __('alert.subscription_created_message', ['name' => $subscriptionTitle]),
+                            user: $user,
+                            topic: 'subscription'
                         );
                     }
 

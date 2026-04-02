@@ -58,6 +58,7 @@ class WeeklySpendingCheck extends Command
         if (!$admin) return;
 
         // 1. Category weekly total vs average
+        // This week, :category up :percentage%, +:amount
         foreach ($byCategory as $category => $total) {
             if ($category === 'Uncategorized') continue;
             $result = Transaction::periodSpendingComparison(
@@ -81,12 +82,14 @@ class WeeklySpendingCheck extends Command
                     user_id: 1,
                     data: $result,
                     pin: true,
+                    topic: 'report',
                 );
                 $this->info("Weekly category alert: {$category} up {$result['difference_percentage']}%");
             }
         }
 
         // 2. Destination weekly total vs average
+        // This is :multiplierx your normal weekly spend at :destination. Total: :amount, Average: :average_amount
         foreach ($byDestination as $destination => $total) {
             $result = Transaction::periodSpendingComparison(
                 filter: ['destination_name' => $destination],
@@ -110,6 +113,7 @@ class WeeklySpendingCheck extends Command
                     user_id: 1,
                     data: $result,
                     pin: true,
+                    topic: 'report',
                 );
                 $this->info("Weekly destination alert: {$destination} {$result['multiplier']}x");
             }

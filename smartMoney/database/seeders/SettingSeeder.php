@@ -80,5 +80,6 @@ PROMPT,
 
         // Alert Batching
         Setting::firstOrCreate(['key' => 'alert_batch_delay'], ['value' => '5', 'description' => 'Seconds to wait before sending batched alert notifications (combines multiple alerts into one)']);
+        Setting::firstOrCreate(['key' => 'cleanup_transaction_alerts_days'], ['value' => '5', 'description' => 'Days to keep transaction alerts before automatic cleanup (regardless of read status)']);
     }
 }

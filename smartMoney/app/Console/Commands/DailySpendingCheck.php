@@ -56,6 +56,7 @@ class DailySpendingCheck extends Command
         if (!$admin) return;
 
         // 1. Category daily total vs average
+        // Today, :category up :percentage%, +:amount
         foreach ($byCategory as $category => $total) {
             if ($category === 'Uncategorized') continue;
             $result = Transaction::periodSpendingComparison(
@@ -79,12 +80,14 @@ class DailySpendingCheck extends Command
                     user_id: 1,
                     data: $result,
                     pin: true,
+                    topic: 'report',
                 );
                 $this->info("Category alert: {$category} up {$result['difference_percentage']}%");
             }
         }
 
         // 2. Unusual category frequency
+        // :count :category transactions today, which is unusual (average: :average per day)
         $catCounts = [];
         foreach ($transactions as $t) {
             $cat = $t->category_name ?? null;
@@ -105,12 +108,14 @@ class DailySpendingCheck extends Command
                     user_id: 1,
                     data: $freqResult,
                     pin: true,
+                    topic: 'report',
                 );
                 $this->info("Frequency alert: {$category} x{$freqResult['today_count']}");
             }
         }
 
         // 3. Unusual destination frequency (repeated same-day)
+        // :count repeated transactions from :destination today (average: :average per day)
         foreach ($destCounts as $destination => $count) {
             $freqResult = Transaction::unusualDestinationFrequency($destination, $today);
             if ($freqResult) {
@@ -125,6 +130,7 @@ class DailySpendingCheck extends Command
                     user_id: 1,
                     data: $freqResult,
                     pin: true,
+                    topic: 'report',
                 );
                 $this->info("Destination frequency alert: {$destination} x{$freqResult['today_count']}");
             }

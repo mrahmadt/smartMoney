@@ -80,6 +80,7 @@ class MonthlySpendingCheck extends Command
                     user_id: 1,
                     data: $result,
                     pin: true,
+                    topic: 'report',
                 );
                 $this->info("Monthly category alert: {$category} up {$result['difference_percentage']}%");
             }
@@ -109,6 +110,7 @@ class MonthlySpendingCheck extends Command
                     user_id: 1,
                     data: $result,
                     pin: true,
+                    topic: 'report',
                 );
                 $this->info("Monthly destination alert: {$destination} {$result['multiplier']}x");
             }

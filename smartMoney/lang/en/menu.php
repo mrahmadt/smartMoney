@@ -64,4 +64,11 @@ return [
     'default_changed' => 'Default category for :store changed to :category',
     'update_failed' => 'Failed to update transaction',
     'review_already_processed' => 'This review has already been processed',
+
+    // Alert topics
+    'topic' => 'Topic',
+    'topic_transaction' => 'Transaction',
+    'topic_abnormal' => 'Abnormal',
+    'topic_report' => 'Report',
+    'topic_subscription' => 'Subscription',
 ];

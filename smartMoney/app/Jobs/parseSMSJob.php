@@ -225,6 +225,7 @@ class parseSMSJob implements ShouldQueue
                         transaction_journal_id: $status['attributes']->transaction_journal_id,
                         data: $destAbnormal,
                         pin: true,
+                        topic: 'abnormal',
                     );
                 }
             }
@@ -255,6 +256,7 @@ class parseSMSJob implements ShouldQueue
                         user_id: $user_id,
                         data: $freqResult,
                         pin: true,
+                        topic: 'abnormal',
                     );
                 }
             }
