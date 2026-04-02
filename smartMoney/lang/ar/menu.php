@@ -71,4 +71,5 @@ return [
     'topic_abnormal' => 'غير طبيعي',
     'topic_report' => 'تقرير',
     'topic_subscription' => 'اشتراك',
+    'mfa_required' => 'المصادقة الثنائية مطلوبة',
 ];

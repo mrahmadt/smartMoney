@@ -9,6 +9,7 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Auth\MultiFactor\App\AppAuthentication;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -38,6 +39,12 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('')
             ->login()
+            ->multiFactorAuthentication(
+                providers: [
+                    AppAuthentication::make()->recoverable(true),
+                ],
+                isRequired: fn () => auth()->user()?->mfa_required ?? false,
+            )
             ->colors([
                 'primary' => Color::Amber,
             ])

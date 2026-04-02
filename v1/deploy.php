@@ -109,7 +109,7 @@ task('npm:run:prod', function () {
     run('npm run build');
 });
 
-set('keep_releases', 5);
+set('keep_releases', 3);
 
 set('env', [
     'COMPOSER_ALLOW_SUPERUSER=1' => '1',

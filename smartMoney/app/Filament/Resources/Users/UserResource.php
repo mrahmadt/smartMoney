@@ -97,6 +97,8 @@ class UserResource extends Resource
                     ->default('en'),
                 Toggle::make('alert_via_email')
                     ->label(__('menu.alert_via_email')),
+                Toggle::make('mfa_required')
+                    ->label(__('menu.mfa_required')),
             ]);
     }
 
@@ -118,6 +120,9 @@ class UserResource extends Resource
                     ->label(__('menu.language')),
                 IconColumn::make('alert_via_email')
                     ->label(__('menu.alert_via_email'))
+                    ->boolean(),
+                IconColumn::make('mfa_required')
+                    ->label(__('menu.mfa_required'))
                     ->boolean(),
             ])
             ->recordActions([

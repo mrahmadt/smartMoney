@@ -71,4 +71,5 @@ return [
     'topic_abnormal' => 'Abnormal',
     'topic_report' => 'Report',
     'topic_subscription' => 'Subscription',
+    'mfa_required' => 'MFA Required',
 ];
