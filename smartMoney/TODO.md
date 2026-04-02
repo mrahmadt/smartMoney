@@ -1,6 +1,0 @@
-Send Weekly Report
-
-
-DailySpendingCheck
-WeeklySpendingCheck
-MonthlySpendingCheck
