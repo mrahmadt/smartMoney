@@ -325,7 +325,7 @@ public function getCategoryTransactions($category_id, $start = null, $end = null
 
         $transactions = $this->callAPI($endpoint, ['start' => $start, 'end' => $end, 'limit' => $limit, 'page' => $page, 'type' => $type]);
 
-        if (isset($transactions->exception) && !isset($transactions->data[0])) {
+        if (isset($transactions->exception) || !isset($transactions->data[0])) {
             return false;
         }
 
