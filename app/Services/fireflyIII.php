@@ -456,6 +456,14 @@ public function getCategoryTransactions($category_id, $start = null, $end = null
             Log::error('fireflyIII error: ' . curl_error($curl));
             return false;
         }
+
+        Log::debug('fireflyIII API', [
+            'method' => $method,
+            'endpoint' => $apiName,
+            'params' => $parms,
+            'http_code' => curl_getinfo($curl, CURLINFO_HTTP_CODE),
+        ]);
+
         // curl_close($curl);
         return json_decode($response);
     }
