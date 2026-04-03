@@ -7,6 +7,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
 use App\Services\fireflyIII;
+use App\Models\Account;
 use Illuminate\Support\Facades\Auth;
 use App\Filament\Pages\EditTransactions;
 
@@ -27,20 +28,16 @@ class RecentTransactions extends TableWidget
         if ($cachedData) {
             return $cachedData;
         }
-
         $firefly = new fireflyIII();
         $limit = 5;
-        $filter = [];
-        $budget_id = Auth::user()->budget_id;
-        if ($budget_id != null) {
-            $filter['budget_id'] = $budget_id;
-        }
+        $filter = Account::getTransactionFilter();
 
-        $start = date('Y-m-d');
-        $end = date('Y-m-01');
+        $start = date('Y-m-d', strtotime('-30 days'));
+        $end = date('Y-m-d');
 
         $transactions = [];
         $output = $firefly->getTransactions(start: $start, end: $end, filter: $filter, limit: $limit, page: 1);
+        
         if (!empty($output)) {
             if (isset($output->data)) {
                 foreach ($output->data as $transaction) {

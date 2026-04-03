@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use Filament\Widgets\ChartWidget;
 use App\Services\fireflyIII;
+use App\Models\Account;
 use Illuminate\Support\Facades\Auth;
 
 class SpendingChart extends ChartWidget
@@ -67,8 +68,8 @@ protected function getOptions(): array
         }
 
 
-        if($start == null) $start = date('Y-m-01');
-        if($end == null) $end = date('Y-m-t');
+        if ($start == null) $start = date('Y-m-d', strtotime('-30 days'));
+        if ($end == null) $end = date('Y-m-d');
 
         // if $end > today, set $end to today
         if(strtotime($end) > strtotime(date('Y-m-d'))) {
@@ -92,11 +93,7 @@ protected function getOptions(): array
 
         $firefly = new fireflyIII();
 
-        $filter = [];
-        $budget_id = Auth::user()->budget_id;
-        if ($budget_id != null) {
-            $filter['budget_id'] = $budget_id;
-        }
+        $filter = Account::getTransactionFilter();
         $transactions = [];
 
         for($page = 1; $page <= 10; $page++){

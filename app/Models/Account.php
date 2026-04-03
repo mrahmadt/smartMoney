@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Auth;
 use App\Services\fireflyIII;
 
 class Account extends Model
@@ -32,6 +33,28 @@ class Account extends Model
     public function sender(): BelongsTo
     {
         return $this->belongsTo(SMSSender::class, 'sender_id');
+    }
+
+    /**
+     * Get transaction filter array for the current user.
+     * Admin (user_id=1) gets no filter (sees all).
+     * Other users: filter by source_id matching owned accounts or shared budget accounts.
+     *
+     * @return array<string, mixed>
+     */
+    public static function getTransactionFilter(): array
+    {
+        $user = Auth::user();
+        if ($user->id === 1) {
+            return [];
+        }
+
+        $accountIds = static::where('user_id', $user->id)
+            ->when($user->budget_id, fn ($q) => $q->orWhere('budget_id', $user->budget_id))
+            ->pluck('firefly_account_id')
+            ->toArray();
+
+        return !empty($accountIds) ? ['source_id' => $accountIds] : [];
     }
 
     /**

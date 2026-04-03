@@ -7,6 +7,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
 use App\Services\fireflyIII;
+use App\Models\Account;
 use Illuminate\Support\Facades\Auth;
 
 class TopMerchants extends TableWidget
@@ -27,18 +28,14 @@ class TopMerchants extends TableWidget
             return $cachedData;
         }
 
-        $start = date('Y-m-01');
-        $end = date('Y-m-t');
-        $budget_id = 1;
+        $start = date('Y-m-d', strtotime('-30 days'));
+        $end = date('Y-m-d');
+
 
         $firefly = new fireflyIII();
         $limit = 10;
 
-        $filter = [];
-        $budget_id = Auth::user()->budget_id;
-        if ($budget_id != null) {
-            $filter['budget_id'] = $budget_id;
-        }
+        $filter = Account::getTransactionFilter();
         $merchants = [];
         $transactions = [];
         for ($page = 1; $page <= 10; $page++) {

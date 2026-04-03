@@ -10,13 +10,16 @@ class fireflyIII
     private $fireflyIII_URL = null;
     private $fireflyIII_API_TOKEN = null;
     private static $categories = [];
+    public $transactionsMeta = null;
+    public $transactionsLinks = null;
 
     function __construct()
     {
         $this->fireflyIII_URL = config('app.FireFlyIII.url');
         $this->fireflyIII_API_TOKEN = config('app.FireFlyIII.token');
     }
-    public function createSubscription($options){
+    public function createSubscription($options)
+    {
         $defaultOptions = [
             // 'name' => 'Rent',
             // 'amount_min' => '123.45',
@@ -26,34 +29,37 @@ class fireflyIII
             'active' => true,
         ];
         $options = array_merge($defaultOptions, $options);
-        $subscription = $this->callAPI(apiName:'subscriptions', parms:$options, method: 'POST');
-        if(isset($subscription->exception) || isset($subscription->errors)) return false;
+        $subscription = $this->callAPI(apiName: 'subscriptions', parms: $options, method: 'POST');
+        if (isset($subscription->exception) || isset($subscription->errors)) return false;
         return $subscription;
     }
-    public function getSubscriptions($page = 1, $limit = 50){
+    public function getSubscriptions($page = 1, $limit = 50)
+    {
         $options = [
             'limit' => $limit,
             'page' => $page,
         ];
-        $subscriptions = $this->callAPI(apiName:'subscriptions', parms:$options);
-        if(isset($subscriptions->exception)) return false;
+        $subscriptions = $this->callAPI(apiName: 'subscriptions', parms: $options);
+        if (isset($subscriptions->exception)) return false;
         return $subscriptions;
     }
-    public function findSubscription($name = null){
+    public function findSubscription($name = null)
+    {
         $page = 1;
-        while(true){
+        while (true) {
             $subscriptions = $this->getSubscriptions($page, 50);
-            if(!$subscriptions) return false;
-            foreach($subscriptions->data as $subscription){
-                if($subscription->attributes->name == $name) return $subscription;
+            if (!$subscriptions) return false;
+            foreach ($subscriptions->data as $subscription) {
+                if ($subscription->attributes->name == $name) return $subscription;
             }
-            if($subscriptions->meta->pagination->current_page == $subscriptions->meta->pagination->total_pages) break;
+            if ($subscriptions->meta->pagination->current_page == $subscriptions->meta->pagination->total_pages) break;
             $page++;
         }
         return false;
     }
 
-    public function createBill($options){
+    public function createBill($options)
+    {
         $defaultOptions = [
             // 'name' => 'Rent',
             // 'amount_min' => '123.45',
@@ -63,34 +69,37 @@ class fireflyIII
             'active' => true,
         ];
         $options = array_merge($defaultOptions, $options);
-        $bill = $this->callAPI(apiName:'bills', parms:$options, method: 'POST');
-        if(isset($bill->exception) || isset($bill->errors)) return false;
+        $bill = $this->callAPI(apiName: 'bills', parms: $options, method: 'POST');
+        if (isset($bill->exception) || isset($bill->errors)) return false;
         return $bill;
     }
-    public function getBills($page = 1, $limit = 50){
+    public function getBills($page = 1, $limit = 50)
+    {
         $options = [
             'limit' => $limit,
             'page' => $page,
         ];
-        $bills = $this->callAPI(apiName:'bills', parms:$options);
-        if(isset($bills->exception)) return false;
+        $bills = $this->callAPI(apiName: 'bills', parms: $options);
+        if (isset($bills->exception)) return false;
         return $bills;
     }
-    public function findBill($name = null){
+    public function findBill($name = null)
+    {
         $page = 1;
-        while(true){
+        while (true) {
             $bills = $this->getBills($page, 50);
-            if(!$bills) return false;
-            foreach($bills->data as $bill){
-                if($bill->attributes->name == $name) return $bill;
+            if (!$bills) return false;
+            foreach ($bills->data as $bill) {
+                if ($bill->attributes->name == $name) return $bill;
             }
-            if($bills->meta->pagination->current_page == $bills->meta->pagination->total_pages) break;
+            if ($bills->meta->pagination->current_page == $bills->meta->pagination->total_pages) break;
             $page++;
         }
         return false;
     }
 
-    public function createRule($options){
+    public function createRule($options)
+    {
         $defaultOptions = [
             // 'name' => 'Rent',
             // 'amount_min' => '123.45',
@@ -100,36 +109,39 @@ class fireflyIII
             'active' => true,
         ];
         $options = array_merge($defaultOptions, $options);
-        $role = $this->callAPI(apiName:'rules', parms:$options, method: 'POST');
-        if(isset($role->exception) || isset($role->errors)) return false;
+        $role = $this->callAPI(apiName: 'rules', parms: $options, method: 'POST');
+        if (isset($role->exception) || isset($role->errors)) return false;
         return $role;
     }
 
-    public function getRules($page = 1, $limit = 50){
+    public function getRules($page = 1, $limit = 50)
+    {
         $options = [
             'limit' => $limit,
             'page' => $page,
         ];
-        $rules = $this->callAPI(apiName:'rules', parms:$options);
-        if(isset($rules->exception)) return false;
+        $rules = $this->callAPI(apiName: 'rules', parms: $options);
+        if (isset($rules->exception)) return false;
         return $rules;
     }
 
-    public function findRule($name = null){
+    public function findRule($name = null)
+    {
         $page = 1;
-        while(true){
+        while (true) {
             $rules = $this->getRules($page, 50);
-            if(!$rules) return false;
-            foreach($rules->data as $rule){
-                if($rule->attributes->title == $name) return $rule;
+            if (!$rules) return false;
+            foreach ($rules->data as $rule) {
+                if ($rule->attributes->title == $name) return $rule;
             }
-            if($rules->meta->pagination->current_page == $rules->meta->pagination->total_pages) break;
+            if ($rules->meta->pagination->current_page == $rules->meta->pagination->total_pages) break;
             $page++;
         }
         return false;
     }
 
-    public function triggerRule($options){
+    public function triggerRule($options)
+    {
         $defaultOptions = [
             // 'id' => 'Rent',
             // 'start' => '123.45',
@@ -137,15 +149,16 @@ class fireflyIII
             // 'accounts' => [],
         ];
         $options = array_merge($defaultOptions, $options);
-        $triggerRule = $this->callAPI(apiName:'rules/' . $options['id'] . '/trigger', parms:$options, method: 'POST');
-        if(isset($triggerRule->exception)) return false;
+        $triggerRule = $this->callAPI(apiName: 'rules/' . $options['id'] . '/trigger', parms: $options, method: 'POST');
+        if (isset($triggerRule->exception)) return false;
         return true;
     }
-    public function createRuleGroup($options){
+    public function createRuleGroup($options)
+    {
         $defaultOptions = [];
         $options = array_merge($defaultOptions, $options);
-        $ruleGroup = $this->callAPI(apiName:'rule-groups', parms:$options, method: 'POST');
-        if(isset($ruleGroup->exception) || isset($ruleGroup->errors)) return false;
+        $ruleGroup = $this->callAPI(apiName: 'rule-groups', parms: $options, method: 'POST');
+        if (isset($ruleGroup->exception) || isset($ruleGroup->errors)) return false;
         return $ruleGroup;
     }
 
@@ -165,17 +178,18 @@ class fireflyIII
         }
         return self::$categories;
     }
-        public function lookupCategory($shop, $exactMatch = false){
+    public function lookupCategory($shop, $exactMatch = false)
+    {
         $query = 'has_any_category:true';
-        if($exactMatch){
-            $query .= ' account_is:"'.$shop.'"';
-        }else{
-            $query .= ' account_starts:"'.$shop.'"';
+        if ($exactMatch) {
+            $query .= ' account_is:"' . $shop . '"';
+        } else {
+            $query .= ' account_starts:"' . $shop . '"';
         }
         $category = $this->searchTransactions($query, 1);
-        if($category == false) return false;
+        if ($category == false) return false;
 
-        if(!isset($category->data[0]->attributes->transactions[0]->category_name)) return false;
+        if (!isset($category->data[0]->attributes->transactions[0]->category_name)) return false;
         return $category->data[0]->attributes->transactions[0]->category_name;
     }
 
@@ -227,7 +241,8 @@ class fireflyIII
         return $budgets;
     }
 
-        public function newTransaction($data){
+    public function newTransaction($data)
+    {
         $transaction = [
             // 'type' => null, // withdrawal, deposit, transfer
             // 'date' => date('c'),
@@ -248,12 +263,12 @@ class fireflyIII
         // $transaction['notes']['account_id'] = $accountSource['account']->id;
         // $transaction['notes']['user_id'] = $accountSource['account']->user_id;
 
-        if(isset($transaction['notes']) && is_array($transaction['notes'])){
+        if (isset($transaction['notes']) && is_array($transaction['notes'])) {
             $notes = json_encode($transaction['notes']);
             // check if json_encode failed
-            if($notes == false) {
+            if ($notes == false) {
                 $notes = implode("\n", $transaction['notes']);
-            }else{
+            } else {
                 $transaction['notes'] = $notes;
             }
         }
@@ -263,32 +278,56 @@ class fireflyIII
             'transactions' => [$transaction],
         ];
 
-        $result = $this->callAPI(apiName:'transactions', parms:$params, method: 'POST');
+        $result = $this->callAPI(apiName: 'transactions', parms: $params, method: 'POST');
         // if(isset($result->exception) || isset($result->errors) || isset($result->message)) return false;
         return $result;
     }
 
-    
-    public function searchTransactions($query, $limit = 10){
-        $transactions = $this->callAPI('search/transactions', ['limit' => $limit, 'query'=>$query]);
-        if(isset($transactions->exception) || isset($transactions->errors)) return false;
+
+    public function searchTransactions($query, $limit = 10)
+    {
+        $transactions = $this->callAPI('search/transactions', ['limit' => $limit, 'query' => $query]);
+        if (isset($transactions->exception) || isset($transactions->errors)) return false;
         return $transactions;
     }
 
-    public $transactionsMeta = null;
-    public $transactionsLinks = null;
-    public function getTransactions($start = null, $end = null, $filter = [], $limit = 1000, $page = 1, $type = null, &$meta = [])
+public function getCategoryTransactions($category_id, $start = null, $end = null, $filter = [], $limit = 1000, $page = 1, $type = null)
+    {
+        return $this->fetchTransactions('categories/' . $category_id . '/transactions', $start, $end, $filter, $limit, $page, $type);
+    }
+
+    public function getBudgetTransactions($budget_id, $start = null, $end = null, $filter = [], $limit = 1000, $page = 1, $type = null)
+    {
+        return $this->fetchTransactions('budgets/' . $budget_id . '/transactions', $start, $end, $filter, $limit, $page, $type);
+    }
+
+    public function getAccountTransactions($account_id, $start = null, $end = null, $filter = [], $limit = 1000, $page = 1, $type = null)
+    {
+        return $this->fetchTransactions('accounts/' . $account_id . '/transactions/', $start, $end, $filter, $limit, $page, $type);
+    }
+
+    public function getTransactions($start = null, $end = null, $filter = [], $limit = 1000, $page = 1, $type = null)
+    {
+        return $this->fetchTransactions('transactions/', $start, $end, $filter, $limit, $page, $type);
+    }
+
+    private function fetchTransactions(string $endpoint, $start = null, $end = null, $filter = [], $limit = 1000, $page = 1, $type = null)
     {
         $this->transactionsMeta = null;
         $this->transactionsLinks = null;
-        // dd($start, $end, $filter, $limit, $page, $type);
-        if ($start == null) $start = date('Y-m-01');
-        if ($end == null) $end = date('Y-m-t');
-        $transactions = $this->callAPI('transactions/', ['start' => $start, 'end' => $end, 'limit' => $limit, 'page' => $page, 'type' => $type]);
 
-        if (isset($transactions->exception) && !isset($transactions->data[0])) return false;
-        // dd($transactions->data);
-        // if ($filter == []) return $transactions;
+        if ($start === null) {
+            $start = date('Y-m-d', strtotime('-30 days'));
+        }
+        if ($end === null) {
+            $end = date('Y-m-t');
+        }
+
+        $transactions = $this->callAPI($endpoint, ['start' => $start, 'end' => $end, 'limit' => $limit, 'page' => $page, 'type' => $type]);
+
+        if (isset($transactions->exception) && !isset($transactions->data[0])) {
+            return false;
+        }
 
         $filteredTransactions = [];
         foreach ($transactions->data as $transaction) {
@@ -299,7 +338,9 @@ class fireflyIII
                     break;
                 }
             }
-            if ($include) $filteredTransactions[] = $transaction->attributes->transactions[0];
+            if ($include) {
+                $filteredTransactions[] = $transaction->attributes->transactions[0];
+            }
         }
         $this->transactionsMeta = $transactions->meta ?? [];
         $this->transactionsLinks = $transactions->links ?? [];
@@ -337,7 +378,7 @@ class fireflyIII
         return $account;
     }
 
-    public function createAccount($name, $type = 'asset', $SMS_AcctCode = null, $SMS_Sender = null, $SMS_Options = [], $account_options = [])
+    public function createAccount($name, $type = 'asset', $account_options = [])
     {
         $default_options = [
             'name' => $name,
@@ -345,23 +386,6 @@ class fireflyIII
             'notes' => null,
         ];
         $options = array_merge($default_options, $account_options);
-
-        $notes = [];
-
-        if ($SMS_Sender !== null) {
-            $notes[] = 'SMS_Sender=' . $SMS_Sender;
-        }
-        if ($SMS_AcctCode !== null) {
-            $notes[] = 'SMS_AcctCodes=' . $SMS_AcctCode;
-        }
-
-        if (isset($SMS_Options) && is_array($SMS_Options) && count($SMS_Options) > 0) {
-            $notes[] = 'SMS_Options=' . json_encode($SMS_Options);
-        }
-
-        if (count($notes) > 0) {
-            $options['notes'] = implode("\n", $notes);
-        }
 
         $account = $this->callAPI('accounts', $options, 'POST');
         return $account;

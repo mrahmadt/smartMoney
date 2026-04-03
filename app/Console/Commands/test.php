@@ -36,7 +36,7 @@ class test extends Command
      */
     public function handle()
     {
-
+    dd(date('Y-m-t'));
     $data = Transaction::cleanName('ALDREwES');
     dd($data);
     exit;
