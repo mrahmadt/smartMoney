@@ -425,7 +425,12 @@ public function getCategoryTransactions($category_id, $start = null, $end = null
     private function callAPI($apiName, $parms = [], $method = 'GET')
     {
         $curl = curl_init();
-
+        Log::debug('fireflyIII API Request', [
+            'method' => $method,
+            'endpoint' => $apiName,
+            'full_endpoint' => $this->fireflyIII_URL . $apiName,
+            'params' => $parms,
+        ]);
         if ($method == 'GET') {
             $query = http_build_query($parms);
             curl_setopt($curl, CURLOPT_URL, $this->fireflyIII_URL . $apiName . '?' . $query);
@@ -448,7 +453,7 @@ public function getCategoryTransactions($category_id, $start = null, $end = null
         curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($curl, CURLOPT_MAXREDIRS, 10);
         curl_setopt($curl, CURLOPT_CUSTOMREQUEST, $method);
-        curl_setopt($curl, CURLOPT_TIMEOUT, 30);
+        curl_setopt($curl, CURLOPT_TIMEOUT, 120);
         curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 5);
         curl_setopt($curl, CURLOPT_VERBOSE, false);
         $response = curl_exec($curl);
@@ -460,6 +465,7 @@ public function getCategoryTransactions($category_id, $start = null, $end = null
         Log::debug('fireflyIII API', [
             'method' => $method,
             'endpoint' => $apiName,
+            'full_endpoint' => $this->fireflyIII_URL . $apiName,
             'params' => $parms,
             'http_code' => curl_getinfo($curl, CURLINFO_HTTP_CODE),
         ]);
