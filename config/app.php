@@ -127,4 +127,6 @@ return [
         'token' => env('FIREFLYIII_TOKEN'),
     ],
 
+    'sms_api_key' => env('SMS_API_KEY'),
+
 ];

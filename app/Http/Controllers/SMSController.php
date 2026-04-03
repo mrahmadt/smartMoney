@@ -30,6 +30,13 @@ class SMSController extends Controller
      */
     public function store(Request $request)
     {
+        $apiKey = config('app.sms_api_key');
+        if ($apiKey !== null && $apiKey !== '') {
+            if ($request->query('key') !== $apiKey) {
+                return response()->json([], 401);
+            }
+        }
+
         if(Setting::getBool('parsesms_enabled', false) == false){
             return response()->json(['filter' => true, 'error'=>'disabled'], 200);
         }
