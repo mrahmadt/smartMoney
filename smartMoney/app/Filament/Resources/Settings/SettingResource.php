@@ -67,7 +67,7 @@ class SettingResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('key')->searchable()->sortable(),
+                TextColumn::make('key')->searchable()->sortable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('description')->wrap(),
                 TextColumn::make('value')->limit(50)->wrap(),
             ])

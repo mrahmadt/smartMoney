@@ -17,6 +17,7 @@ use App\Models\Setting;
 use App\Models\CategoryMapping;
 use App\Models\PendingCategoryReview;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class parseSMSJob implements ShouldQueue
 {
@@ -105,7 +106,7 @@ class parseSMSJob implements ShouldQueue
                 }
 
                 if (isset($output['error']) && $output['error'] !== '') {
-                    SMS::processInvalidSMS(sms: $this->sms, errors: 'LLM error: ' . $output['error'], keep: true);
+                    SMS::processInvalidSMS(sms: $this->sms, message: 'LLM error', errors: 'LLM error: ' . $output['error'], keep: true);
                     return;
                 }
                 if (!isset($output['transactionType']) || !in_array($output['transactionType'], ['withdrawal', 'deposit', 'payment', 'transfer'])) {
@@ -113,7 +114,7 @@ class parseSMSJob implements ShouldQueue
                     return;
                 }
 
-                if (isset($output['regularExp']) && $output['regularExp'] !== '') {
+                if (Setting::getBool('parsesms_regex_enabled', true) && isset($output['regularExp']) && $output['regularExp'] !== '') {
                     SMSRegularExp::storeRegularExp(
                         message: $this->sms->message,
                         regularExp: $output['regularExp'],
@@ -144,7 +145,7 @@ class parseSMSJob implements ShouldQueue
                 $transaction['tags'] = ['by AI'];
                 $newTransaction = true;
             } catch (\Exception $e) {
-                SMS::processInvalidSMS(sms: $this->sms, errors: 'Internal Error: ' . $e->getMessage(), keep: true);
+                SMS::processInvalidSMS(sms: $this->sms, message: 'Internal Error',errors: 'Internal Error: ' . $e->getMessage(), keep: true);
                 return;
             }
         }
@@ -155,6 +156,7 @@ class parseSMSJob implements ShouldQueue
         $transactionModel = new Transaction();
         $status = $transactionModel->createTransaction($transaction, $this->SMS_sender);
 
+        \Log::debug('Transaction creation status', ['status' => $status, 'transaction' => $transaction]);
         if ($status['success']) {
             print('Transaction created successfully with ID: ' . $status['transaction_id']);
             $this->sms->update(['is_processed' => true]);
@@ -262,7 +264,7 @@ class parseSMSJob implements ShouldQueue
             }
 
         } else {
-            SMS::processInvalidSMS(sms: $this->sms, errors: 'Failed to create transaction: ' . $status['error'] . ' ' . print_r($transaction, true), keep: true);
+            SMS::processInvalidSMS(sms: $this->sms, message: 'Failed to create transaction',  errors: 'Failed to create transaction: ' . $status['error'] . ' ' . print_r($transaction, true), keep: true);
             return;
         }
     }

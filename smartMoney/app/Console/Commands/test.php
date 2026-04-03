@@ -36,6 +36,10 @@ class test extends Command
      */
     public function handle()
     {
+
+    $data = Transaction::cleanName('ALDREwES');
+    dd($data);
+    exit;
         $fireflyIII = new fireflyIII();
         $transaction = $fireflyIII->getTransaction(322);
         $status = [

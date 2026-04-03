@@ -6,7 +6,7 @@ use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
 use App\Filament\Pages\EditTransactions;
-use Novadaemon\FilamentPrettyJson\Form\PrettyJsonField;
+use Novadaemon\FilamentPrettyJson\Infolist\PrettyJsonEntry;
 
 class AlertInfolist
 {
@@ -25,12 +25,14 @@ class AlertInfolist
                     ->formatStateUsing(fn ($state) => nl2br(e($state)))
                     ->columnSpanFull(),
                 
-                // PrettyJsonField::make('data')->columnSpanFull(),
-                TextEntry::make('data')
-                    ->label(__('widget.data'))
-                    ->html()
-                    ->getStateUsing(fn ($record) => is_array($record->data) ? self::renderArray($record->data) : e($record->data))
-                    ->columnSpanFull(),
+                PrettyJsonEntry::make('data')->columnSpanFull()->extraAttributes([
+                        'style' => 'word-wrap: break-word; white-space: pre-wrap;',
+                    ]),
+                // PrettyJsonField::make('data')
+                //     ->label(__('widget.data'))
+                //     // ->html()
+                //     ->getStateUsing(fn ($record) => is_array($record->data) ? json_encode($record->data) : ($record->data))
+                //     ->columnSpanFull(),
                 TextEntry::make('transaction_journal_id')
                     ->label('_')
                     ->weight('bold')

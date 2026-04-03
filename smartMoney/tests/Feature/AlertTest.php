@@ -17,10 +17,10 @@ beforeEach(function () {
 test('newTransaction sends notification for withdrawal', function () {
     $user = User::factory()->create(['language' => 'en']);
 
-    $transaction = [
+    $transaction = (object) [
         'type' => 'withdrawal',
         'amount' => 45.50,
-        'currency' => 'SAR',
+        'currency_symbol' => 'SAR',
         'destination_name' => 'STARBUCKS',
         'source_name' => 'My Account',
         'category_name' => 'Cafe',
@@ -35,10 +35,10 @@ test('newTransaction sends notification for withdrawal', function () {
 test('newTransaction uses translated type for withdrawal', function () {
     $user = User::factory()->create(['language' => 'en']);
 
-    $transaction = [
+    $transaction = (object) [
         'type' => 'withdrawal',
         'amount' => 100,
-        'currency' => 'SAR',
+        'currency_symbol' => 'SAR',
         'destination_name' => 'SHOP',
         'source_name' => 'Account',
         'category_name' => '',
@@ -54,10 +54,10 @@ test('newTransaction uses translated type for withdrawal', function () {
 test('newTransaction sets Arabic locale for Arabic user', function () {
     $user = User::factory()->create(['language' => 'ar']);
 
-    $transaction = [
+    $transaction = (object) [
         'type' => 'deposit',
         'amount' => 500,
-        'currency' => 'SAR',
+        'currency_symbol' => 'SAR',
         'destination_name' => '',
         'source_name' => 'Employer',
         'category_name' => '',
@@ -72,10 +72,10 @@ test('newTransaction sets Arabic locale for Arabic user', function () {
 test('newTransaction handles empty category gracefully', function () {
     $user = User::factory()->create(['language' => 'en']);
 
-    $transaction = [
+    $transaction = (object) [
         'type' => 'withdrawal',
         'amount' => 50,
-        'currency' => 'SAR',
+        'currency_symbol' => 'SAR',
         'destination_name' => 'SHOP',
         'source_name' => 'Account',
         'category_name' => null,

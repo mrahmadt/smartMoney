@@ -19,6 +19,8 @@ class parseSMS implements Agent, Conversational, HasTools, HasStructuredOutput
 {
     use Promptable;
 
+    public bool $includeRegularExp = true;
+
     /**
      * Get the instructions that the agent should follow.
      */
@@ -85,11 +87,15 @@ PROMPT;
             'fees' => $schema->number()->required()->description("Optional fees amount as a float. Use 0 when error != '' or if not present."),
             'feesCurrency' => $schema->string()->required()->pattern("^[A-Z]{3}$")->description("Optional fees currency as 3-letter uppercase. feesCurrency must be '' when fees = 0. Use empty string when error != '' or not present. Do not invent any currency."),
             'transactionDateTime' => $schema->string()->required()->pattern("^$|^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[\\+\\-]\\d{2}:\\d{2})$")->description($transactionDateTime_description),
-            'regularExp' => $schema->string()->required()->description("Required. PHP regex with named groups to extract at least: amount, currency, MyAccountNumber, OtherAccountName, OtherAccountNumber, fees, feesCurrency, transactionDateTime when possible. Use '' when error != '' or cannot produce."),
             'MyAccountNumber' => $schema->string()->required()->description("My account/card identifier from the SMS (examples: X7001, XXX7001, **9010, ***3021, *2398*343, 3209332). Use '' if not present or error != ''."),
             'OtherAccountName' => $schema->string()->required()->description("For payment/transfer: receiver or merchant name. For deposit: sender name. Remove branch numbers if they look like codes (ALDREES 239 -> ALDREES) or 'S121 TAMIMI' -> 'TAMIMI'. Use '' if not present or error != ''."),
             'OtherAccountNumber' => $schema->string()->required()->description("For transfer: receiver account number. For deposit: sender account number. Use '' if not present or error != ''."),
         ];
+
+        if ($this->includeRegularExp) {
+            $data['regularExp'] = $schema->string()->required()->description("Required. PHP regex with named groups to extract at least: amount, currency, MyAccountNumber, OtherAccountName, OtherAccountNumber, fees, feesCurrency, transactionDateTime when possible. Use '' when error != '' or cannot produce.");
+        }
+
         return $data;
     }
 }

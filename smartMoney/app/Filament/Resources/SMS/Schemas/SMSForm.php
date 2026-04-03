@@ -20,13 +20,20 @@ class SMSForm
                     ->required()
                     ->columnSpanFull()
                     ->rows(10),
-                                Toggle::make('is_valid')
+                Toggle::make('is_valid')
                     ->required(),
                 Toggle::make('is_processed')
                     ->required(),
 
-                PrettyJsonField::make('content')->columnSpanFull(),
-                PrettyJsonField::make('errors')->columnSpanFull(),
+                PrettyJsonField::make('content')->columnSpanFull()
+                ->extraAttributes([
+                        'style' => 'word-wrap: break-word; white-space: pre-wrap;',
+                    ]),
+                PrettyJsonField::make('errors')
+                    ->columnSpanFull()
+                    ->extraAttributes([
+                        'style' => 'word-wrap: break-word; white-space: pre-wrap;',
+                    ]),
             ]);
     }
 }

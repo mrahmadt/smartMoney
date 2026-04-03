@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Ai\Agents\SMSCategory;
 use App\Ai\Agents\parseSMS as parseSMSAgent;
+use Illuminate\Support\Facades\Log;
 
 class ParseSMS extends Model
 {
@@ -15,10 +16,12 @@ class ParseSMS extends Model
     public static function parseSMSviaLLM($sms_message)
     {
         $agent = new parseSMSAgent();
+        $agent->includeRegularExp = Setting::getBool('parsesms_regex_enabled', true);
         $model = Setting::get('parsesms_model');
         $response = $agent->prompt($sms_message, model: $model);
         $output = json_decode($response->text, true);
 
+        \Log::debug('LLM parseSMS response', ['output' => $output]);
         if (json_last_error() !== JSON_ERROR_NONE) {
             return false;
         }

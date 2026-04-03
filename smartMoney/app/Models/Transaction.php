@@ -8,6 +8,7 @@ use App\Services\fireflyIII;
 use Carbon\Carbon;
 use App\Models\Currency;
 use App\Models\Account;
+use Illuminate\Support\Facades\Log;
 
 class Transaction extends Model
 {
@@ -112,7 +113,9 @@ public function createTransaction($transaction, $SMS_sender)
         }
 
         $transaction['OtherAccountNumber'] = trim($transaction['OtherAccountNumber']);
+        Log::debug('OtherAccountName', ['OtherAccountName' => $transaction['OtherAccountName']]);
         $transaction['OtherAccountName'] = trim(self::cleanName($transaction['OtherAccountName']));
+        Log::debug('OtherAccountName after cleanName', ['OtherAccountName' => $transaction['OtherAccountName']]);
         if ($transaction['OtherAccountName'] == '' && $transaction['OtherAccountNumber'] == '') {
             $output['error'] = 'OtherAccountName and OtherAccountNumber cannot both be empty';
             return $output;

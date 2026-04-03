@@ -17,9 +17,7 @@ class AlertsTable
     {
         app()->setLocale(auth()->user()->language ?? 'en');
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->where(function ($q) {
-                $q->whereNull('topic')->orWhere('topic', '!=', 'transaction');
-            }))
+            ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('title')
                     ->label(__('widget.title'))
@@ -56,11 +54,27 @@ class AlertsTable
                 SelectFilter::make('topic')
                     ->label(__('menu.topic'))
                     ->options([
+                        // 'all' => __('menu.topic_all'),
                         'transaction' => __('menu.topic_transaction'),
+                        'hide_transaction' => __('menu.topic_hide_transaction'),
                         'abnormal' => __('menu.topic_abnormal'),
                         'report' => __('menu.topic_report'),
                         'subscription' => __('menu.topic_subscription'),
-                    ]),
+                    ])
+                    // ->default('hide_transaction')
+                    ->query(function ($query, array $data) {
+                        // dd($data['value']);
+                        $value = $data['value'] ?? null;
+                        if ($value === 'hide_transaction') {
+                            $query->where(function ($q) {
+                                $q->whereNull('topic')->orWhere('topic', '!=', 'transaction');
+                            });
+                        } elseif ($value === 'all' || $value == null) {
+                            // no filter
+                        } else {
+                            $query->where('topic', $value);
+                        }
+                    }),
             ])
             ->recordActions([
             ])

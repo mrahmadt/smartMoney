@@ -67,9 +67,13 @@ return [
 
     // Alert topics
     'topic' => 'الموضوع',
+    'topic_hide_transaction' => 'إخفاء المعاملات',
+    'topic_all' => 'الكل',
     'topic_transaction' => 'معاملة',
     'topic_abnormal' => 'غير طبيعي',
     'topic_report' => 'تقرير',
     'topic_subscription' => 'اشتراك',
     'mfa_required' => 'المصادقة الثنائية مطلوبة',
+    'mark_all_read' => 'تحديد الكل كمقروء',
+    'all_marked_read' => 'تم تحديد جميع التنبيهات كمقروءة',
 ];

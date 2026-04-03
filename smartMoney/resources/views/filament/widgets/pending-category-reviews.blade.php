@@ -18,10 +18,10 @@
                     <span style="font-size: 13px; color: #dc2626; font-weight: 500;">{{ $review['amount'] }} {{ $review['currency_code'] }}</span>
                     <span style="font-size: 11px; background: #dbeafe; color: #1e40af; padding: 1px 6px; border-radius: 4px;">{{ $review['current_category'] }}</span>
                 </div>
-                <div style="display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap;">
+                <div style="display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap;">
                     @foreach($review['alternatives'] as $catId => $catName)
                         <span wire:click="applyAlternative({{ $review['id'] }}, {{ $catId }})"
-                              style="font-size: 11px; background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; cursor: pointer; border: 1px solid #bbf7d0;"
+                              style="font-size: 11px; background: #dcfce7; color: #166534; padding: 4px 12px; border-radius: 6px; cursor: pointer; border: 1px solid #bbf7d0;"
                               class="hover:opacity-80">
                             {{ $catName }}
                         </span>

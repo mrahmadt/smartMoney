@@ -67,9 +67,13 @@ return [
 
     // Alert topics
     'topic' => 'Topic',
+    'topic_hide_transaction' => 'Hide Transactions',
+    'topic_all' => 'All',
     'topic_transaction' => 'Transaction',
     'topic_abnormal' => 'Abnormal',
     'topic_report' => 'Report',
     'topic_subscription' => 'Subscription',
     'mfa_required' => 'MFA Required',
+    'mark_all_read' => 'Mark All as Read',
+    'all_marked_read' => 'All alerts marked as read',
 ];

@@ -26,7 +26,7 @@ class ReviewTransactions extends Page implements HasTable
 
     protected string $view = 'filament.pages.review-transactions';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-arrow-path';
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 4;
 
     public static function getNavigationLabel(): string
     {
@@ -40,11 +40,11 @@ class ReviewTransactions extends Page implements HasTable
         return __('menu.review_categories');
     }
 
-    public static function getNavigationGroup(): string|\UnitEnum|null
-    {
-        app()->setLocale(auth()->user()->language ?? 'en');
-        return __('menu.config');
-    }
+    // public static function getNavigationGroup(): string|\UnitEnum|null
+    // {
+    //     app()->setLocale(auth()->user()->language ?? 'en');
+    //     return __('menu.config');
+    // }
 
     public static function getNavigationBadge(): ?string
     {
@@ -89,9 +89,6 @@ class ReviewTransactions extends Page implements HasTable
                 TextColumn::make('account_name')
                     ->label(__('menu.merchant_name'))
                     ->searchable(),
-                TextColumn::make('transaction_description')
-                    ->label(__('widget.description'))
-                    ->limit(40),
                 TextColumn::make('transaction_amount')
                     ->label(__('widget.amount'))
                     ->formatStateUsing(fn ($state, $record) => number_format($state, 0, '.', ',') . ' ' . ($record->currency_code ?? ''))
@@ -102,20 +99,17 @@ class ReviewTransactions extends Page implements HasTable
                     ->color('primary'),
                 TextColumn::make('alternative_category_ids')
                     ->label(__('menu.alternative_categories'))
-                    ->formatStateUsing(function ($state, $record) {
+                    ->html()
+                    ->getStateUsing(function ($record) {
                         $ids = $record->alternative_category_ids ?? [];
                         if (empty($ids)) return '-';
                         $categories = Category::whereIn('id', $ids)->pluck('name', 'id');
                         $buttons = [];
                         foreach ($categories as $id => $name) {
                             $escapedName = e($name);
-                            $setDefaultLabel = e(__('menu.set_as_default'));
-                            $buttons[] = '<div class="inline-flex flex-col items-center gap-0.5 mb-1">'
-                                . '<span class="fi-badge fi-color-success inline-flex items-center gap-x-1 rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset cursor-pointer hover:opacity-80" style="background-color: rgb(220 252 231); color: rgb(22 101 52); ring-color: rgb(187 247 208);" wire:click="applyAlternative(' . $record->id . ', ' . $id . ')">' . $escapedName . '</span>'
-                                . '<button wire:click="setDefault(' . $record->id . ', ' . $id . ')" class="text-[10px] text-gray-500 hover:text-primary-600 hover:underline cursor-pointer">' . $setDefaultLabel . '</button>'
-                                . '</div>';
+                            $buttons[] = '<span style="display:inline-block;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;border-radius:6px;padding:4px 14px;font-size:12px;font-weight:500;cursor:pointer;margin:4px 4px 4px 0;" wire:click="applyAlternative(' . $record->id . ', ' . $id . ')" onmouseover="this.style.opacity=\'0.7\'" onmouseout="this.style.opacity=\'1\'">' . $escapedName . '</span>';
                         }
-                        return new HtmlString('<div class="flex flex-wrap gap-2">' . implode('', $buttons) . '</div>');
+                        return new HtmlString(implode(' ', $buttons));
                     }),
             ])
             ->recordActions([
