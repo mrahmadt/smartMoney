@@ -14,25 +14,31 @@
     </div>
 
     <script src="/js/webpush.js"></script>
-    <script>
-        (async function() {
-            const isSubscribed = await SmartMoneyPush.isStillSubscribed();
+<script>
+    function initWebPushPrompt() {
+        if (typeof SmartMoneyPush === 'undefined') {
+            setTimeout(initWebPushPrompt, 100);
+            return;
+        }
+        SmartMoneyPush.isStillSubscribed().then(function(isSubscribed) {
             if (!isSubscribed) {
                 document.getElementById('webpush-prompt').style.display = 'block';
             }
+        });
 
-            document.getElementById('btn-webpush-enable')?.addEventListener('click', async () => {
-                try {
-                    await SmartMoneyPush.subscribe(
-                        @js($this->vapidPublicKey),
-                        @js(csrf_token()),
-                        @js(route('webpush.subscribe'))
-                    );
-                    document.getElementById('webpush-prompt').style.display = 'none';
-                } catch (e) {
-                    console.error('Web push subscription failed:', e);
-                }
-            });
-        })();
-    </script>
+        document.getElementById('btn-webpush-enable')?.addEventListener('click', async () => {
+            try {
+                await SmartMoneyPush.subscribe(
+                    @js($this->vapidPublicKey),
+                    @js(csrf_token()),
+                    @js(route('webpush.subscribe'))
+                );
+                document.getElementById('webpush-prompt').style.display = 'none';
+            } catch (e) {
+                console.error('Web push subscription failed:', e);
+            }
+        });
+    }
+    initWebPushPrompt();
+</script>
 </div>
