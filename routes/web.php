@@ -9,8 +9,7 @@ use App\Http\Controllers\WebPushSubscriptionController;
 //     Route::post('/webpush/unsubscribe', [WebPushSubscriptionController::class, 'destroy'])->name('webpush.unsubscribe');
 // });
 
-Route::middleware(['web', 'filament.admin.auth'])
-    ->prefix('') // match your panel path if needed
+Route::middleware(['web', 'auth'])
     ->group(function () {
         Route::post('/webpush/subscribe', [WebPushSubscriptionController::class, 'store'])->name('webpush.subscribe');
         Route::post('/webpush/unsubscribe', [WebPushSubscriptionController::class, 'destroy'])->name('webpush.unsubscribe');
