@@ -16,6 +16,8 @@ class Account extends Model
         'sender_id',
         'shortcodes',
         'firefly_account_name',
+        'iban',
+        'account_number',
         'firefly_account_id',
         'currency_code',
     ];
@@ -93,6 +95,12 @@ class Account extends Model
                     if ($local->currency_code !== ($remoteAccount->attributes->currency_code ?? null)) {
                         $changes['currency_code'] = $remoteAccount->attributes->currency_code ?? null;
                     }
+                    if ($local->iban !== ($remoteAccount->attributes->iban ?? null)) {
+                        $changes['iban'] = $remoteAccount->attributes->iban ?? null;
+                    }
+                    if ($local->account_number !== ($remoteAccount->attributes->account_number ?? null)) {
+                        $changes['account_number'] = $remoteAccount->attributes->account_number ?? null;
+                    }
                     if (!empty($changes)) {
                         $local->update($changes);
                         $updated++;
@@ -102,6 +110,8 @@ class Account extends Model
                         'firefly_account_name' => $remoteAccount->attributes->name,
                         'firefly_account_id' => $fireflyId,
                         'currency_code' => $remoteAccount->attributes->currency_code ?? null,
+                        'iban' => $remoteAccount->attributes->iban ?? null,
+                        'account_number' => $remoteAccount->attributes->account_number ?? null,
                     ]);
                     $created++;
                 }
