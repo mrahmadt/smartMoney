@@ -109,8 +109,11 @@ class AccountResource extends Resource
                             ->searchable()
                             ->nullable()
                             ->helperText(__('menu.shortcode_budget_hint')),
+                        TextInput::make('note')
+                            ->label(__('widget.notes'))
+                            ->placeholder('e.g. Sara\'s card'),
                     ])
-                    ->columns(2)
+                    ->columns(3)
                     ->defaultItems(0)
                     ->addActionLabel(__('menu.add_shortcode'))
                     ->columnSpanFull(),
