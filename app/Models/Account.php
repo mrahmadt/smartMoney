@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
 use App\Services\fireflyIII;
+use App\Models\Setting;
 
 class Account extends Model
 {
@@ -147,7 +148,7 @@ class Account extends Model
         }
 
         // Priority 3: sender match only (no shortcode match) — last resort
-        if ($sender) {
+        if ($sender && Setting::getBool('account_fallback_sender_only', false)) {
             foreach ($all as $account) {
                 if ($account->sender_id === $sender->id) {
                     return $account;
