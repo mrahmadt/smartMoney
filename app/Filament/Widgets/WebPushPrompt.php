@@ -11,13 +11,12 @@ class WebPushPrompt extends Widget
 
     protected int | string | array $columnSpan = 'full';
 
-    public bool $hasSubscription = false;
     public string $vapidPublicKey = '';
 
     public function mount(): void
     {
         app()->setLocale(Auth::user()->language ?? 'en');
-        $this->hasSubscription = Auth::user()->pushSubscriptions()->exists();
+        $this->vapidPublicKey = (string) config('webpush.vapid.public_key');
         $this->vapidPublicKey = (string) config('webpush.vapid.public_key');
     }
 }

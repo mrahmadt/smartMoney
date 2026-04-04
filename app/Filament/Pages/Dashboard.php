@@ -37,9 +37,7 @@ class Dashboard extends BaseDashboard
     {
         $widgets = [];
 
-        if (!Auth::user()->pushSubscriptions()->exists()) {
-            $widgets[] = \App\Filament\Widgets\WebPushPrompt::class;
-        }
+        $widgets[] = \App\Filament\Widgets\WebPushPrompt::class;
 
         if (Auth::id() === 1) {
             $invalidCount = SMS::where('is_valid', false)->count();
