@@ -7,6 +7,8 @@ use App\Models\SMS;
 use App\Models\SMSSender;
 use App\Models\Setting;
 use App\Jobs\parseSMSJob;
+use App\Models\User;
+use App\Notifications\WebPush;
 
 class SMSController extends Controller
 {
@@ -37,20 +39,27 @@ class SMSController extends Controller
             }
         }
 
-        if(Setting::getBool('parsesms_enabled', false) == false){
-            return response()->json(['filter' => true, 'error'=>'disabled'], 200);
+        if (Setting::getBool('parsesms_enabled', false) == false) {
+            return response()->json(['filter' => true, 'error' => 'disabled'], 200);
         }
 
         $data = $request->all();
 
-        if(!isset($data['query']['sender']) || !isset($data['query']['message']['text'])){
-            return response()->json(['filter' => true, 'error'=>'noData'], 200);
-        } 
+        if (!isset($data['query']['sender']) || !isset($data['query']['message']['text'])) {
+            return response()->json(['filter' => true, 'error' => 'noData'], 200);
+        }
 
         $sender = $data['query']['sender'];
-        if(!SMSSender::isValidSender($sender)){
+        if (!SMSSender::isValidSender($sender)) {
             \Log::debug('SMSController: invalid sender', ['sender' => $sender]);
-            return response()->json(['filter' => true, 'error'=>'invalidSender'], 200);
+            $user = User::find(1);
+            $user->notify(new WebPush(
+                title: 'invalid sender',
+                body: 'invalid sender (' . $sender . ')',
+                url: '/alerts'
+            ));
+
+            return response()->json(['filter' => true, 'error' => 'invalidSender'], 200);
         }
 
         $message = SMS::removeHiddenChars($data['query']['message']['text']);
@@ -61,8 +70,8 @@ class SMSController extends Controller
 
         $stripedMessage = SMS::preClean($message);
         $status = SMS::isValidBankTransaction($stripedMessage);
-        if($status == false){
-            if(Setting::getBool('parsesms_store_invalid_sms', false)){
+        if ($status == false) {
+            if (Setting::getBool('parsesms_store_invalid_sms', false)) {
                 $sms = new SMS();
                 $sms->sender = $sender;
                 $sms->message = $message;
@@ -73,7 +82,7 @@ class SMSController extends Controller
                 $sms->errors = ['reason' => 'invalid SMS'];
                 $sms->save();
             }
-            return response()->json(['filter' => true, 'error'=>'invalidSMS'], 200);
+            return response()->json(['filter' => true, 'error' => 'invalidSMS'], 200);
         }
 
         $sms = new SMS();
@@ -91,7 +100,7 @@ class SMSController extends Controller
         } catch (\Exception $e) {
             $sms->errors = ['message' => 'processingError'];
             $sms->save();
-            return response()->json(['filter' => true, 'error'=>'processingError'], 200);
+            return response()->json(['filter' => true, 'error' => 'processingError'], 200);
         }
     }
 }
