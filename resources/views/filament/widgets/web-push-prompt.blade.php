@@ -14,39 +14,16 @@
         </div>
     </div>
 
+    <script src="/js/webpush.js"></script>
     <script>
         (function() {
-            const VAPID_KEY = @js($this->vapidPublicKey);
-
-            function urlBase64ToUint8Array(base64String) {
-                const padding = '='.repeat((4 - base64String.length % 4) % 4);
-                const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-                const rawData = atob(base64);
-                const outputArray = new Uint8Array(rawData.length);
-                for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
-                return outputArray;
-            }
-
             document.getElementById('btn-webpush-enable')?.addEventListener('click', async () => {
                 try {
-                    const perm = await Notification.requestPermission();
-                    if (perm !== 'granted') return;
-
-                    const reg = await navigator.serviceWorker.register('/sw.js');
-                    const sub = await reg.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: urlBase64ToUint8Array(VAPID_KEY),
-                    });
-
-                    await fetch(@js(route('webpush.subscribe')), {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': @js(csrf_token()),
-                        },
-                        body: JSON.stringify(sub),
-                    });
-
+                    await SmartMoneyPush.subscribe(
+                        @js($this->vapidPublicKey),
+                        @js(csrf_token()),
+                        @js(route('webpush.subscribe'))
+                    );
                     document.getElementById('webpush-prompt').style.display = 'none';
                 } catch (e) {
                     console.error('Web push subscription failed:', e);

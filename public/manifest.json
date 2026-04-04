@@ -1,13 +1,13 @@
 {
-    "name": "Budget",
-    "short_name": "Budget",
+    "name": "Smart Money",
+    "short_name": "Smart Money",
     "start_url": "/",
     "display": "standalone",
     "theme_color": "#3b43ff",
     "background_color": "#ffffff",
     "icons": [
         {
-            "src": "icon/icon-128x128.png",
+            "src": "img/icon-128x128.png",
                 "sizes": "128x128",
                 "type": "image/png"
         },

@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Schedule;
 
 
 Schedule::command('app:SyncFirefly')->daily();
+Schedule::command('app:CleanupPushSubscriptions')->weekly();
 Schedule::command('app:SubscriptionDetector')->cron('0 0 */10 * *');
 Schedule::command('app:CleanupSMS')->daily();
 Schedule::command('app:CleanupAlerts')->daily();

@@ -41,16 +41,22 @@ class SendBatchedNotifications implements ShouldQueue
         app()->setLocale($user->language ?? 'en');
 
         if ($alerts->count() === 1) {
-            $title = $alerts->first()->title;
-            $webPushBody = $alerts->first()->message;
-            $emailBody = $alerts->first()->message;
+            $alert = $alerts->first();
+            $title = $alert->title;
+            $webPushBody = $alert->message;
+            $emailBody = $alert->message;
+            $url = $alert->transaction_journal_id
+                ? '/transactions/' . $alert->transaction_journal_id . '/edit'
+                : '/alerts/' . $alert->id;
         } else {
             $title = __('alert.batched_title', ['count' => $alerts->count()]);
             $emailBody = $this->buildFullBody($alerts);
             $webPushBody = $this->buildWebPushBody($alerts);
+            $url = '/alerts';
         }
 
-        $user->notify(new WebPush($title, $webPushBody));
+        $tag = 'alert-batch-' . $this->userId . '-' . now()->timestamp;
+        $user->notify(new WebPush($title, $webPushBody, $url, $tag));
         if ($user->alert_via_email) {
             $user->notify(new AlertEmail($title, $emailBody));
         }
