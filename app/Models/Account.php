@@ -129,7 +129,8 @@ class Account extends Model
      * Find account by SMS sender name and shortcode.
      * Priority 1: sender + shortcode match
      * Priority 2: no sender set + shortcode match
-     * Priority 3: sender match only (no shortcode match) — last resort
+     * Priority 3: guess by matching shortcode against IBAN/account_number suffix (if enabled)
+     * Priority 4: sender match only (no shortcode match) — last resort (if enabled)
      * Returns null if no match.
      */
     public static function findBySenderAndShortcode(string $senderName, string $shortcode): ?static
@@ -157,7 +158,27 @@ class Account extends Model
             }
         }
 
-        // Priority 3: sender match only (no shortcode match) — last resort
+        // Priority 3: guess by matching shortcode against IBAN or account_number suffix
+        if ($sender && Setting::getBool('account_guess_by_shortcode', false)) {
+            $cleanShortcode = preg_replace('/[^0-9]/', '', $shortcode);
+            if (strlen($cleanShortcode) >= 3) {
+                foreach ($all as $account) {
+                    if ($account->sender_id !== $sender->id) {
+                        continue;
+                    }
+                    $cleanIban = $account->iban ? preg_replace('/[\s\-]/', '', $account->iban) : null;
+                    $cleanAccountNumber = $account->account_number ? preg_replace('/[\s\-]/', '', $account->account_number) : null;
+                    if ($cleanIban && str_ends_with($cleanIban, $cleanShortcode)) {
+                        return $account;
+                    }
+                    if ($cleanAccountNumber && str_ends_with($cleanAccountNumber, $cleanShortcode)) {
+                        return $account;
+                    }
+                }
+            }
+        }
+
+        // Priority 4: sender match only (no shortcode match) — last resort
         if ($sender && Setting::getBool('account_fallback_sender_only', false)) {
             foreach ($all as $account) {
                 if ($account->sender_id === $sender->id) {

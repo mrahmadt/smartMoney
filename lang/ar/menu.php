@@ -80,4 +80,5 @@ return [
     'translated_name' => 'الاسم المترجم',
     'shortcode_budget_hint' => 'تعيين ميزانية مختلفة لهذا الرمز (اتركه فارغاً لاستخدام الميزانية الافتراضية)',
     'add_shortcode' => 'إضافة رمز',
+    'account_number' => 'رقم الحساب',
 ];

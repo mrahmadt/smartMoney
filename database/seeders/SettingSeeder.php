@@ -80,6 +80,7 @@ PROMPT,
 
         // Account Matching
         Setting::firstOrCreate(['key' => 'account_fallback_sender_only'], ['value' => 'false', 'description' => 'When no shortcode matches, fall back to any account matching the SMS sender (default: false)']);
+        Setting::firstOrCreate(['key' => 'account_guess_by_shortcode'], ['value' => 'false', 'description' => 'Guess account by matching SMS shortcode against IBAN or account number suffix (default: false)']);
 
         // Alert Batching
         Setting::firstOrCreate(['key' => 'alert_batch_delay'], ['value' => '5', 'description' => 'Seconds to wait before sending batched alert notifications (combines multiple alerts into one)']);

@@ -82,6 +82,12 @@ class AccountResource extends Resource
                 TextInput::make('currency_code')
                     ->label(__('menu.currency_code'))
                     ->disabled(),
+                TextInput::make('iban')
+                    ->label('IBAN')
+                    ->disabled(),
+                TextInput::make('account_number')
+                    ->label(__('menu.account_number'))
+                    ->disabled(),
                 Select::make('user_id')
                     ->label(__('menu.user'))
                     ->options(User::pluck('name', 'id'))
