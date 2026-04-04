@@ -53,7 +53,6 @@ class Dashboard extends BaseDashboard
         if (\App\Filament\Widgets\PendingCategoryReviewsWidget::canView()) {
             $widgets[] = \App\Filament\Widgets\PendingCategoryReviewsWidget::class;
         }
-
         return $widgets;
     }
 }
