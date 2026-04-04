@@ -209,9 +209,9 @@ class Account extends Model
         if (!is_array($this->shortcodes)) {
             return [];
         }
-
-        return array_map(function ($entry) {
+        $data = array_map(function ($entry) {
             return is_string($entry) ? $entry : ($entry['shortcode'] ?? '');
         }, $this->shortcodes);
+        return $data;
     }
 }

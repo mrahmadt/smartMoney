@@ -125,6 +125,7 @@ class AccountResource extends Resource
     {
         app()->setLocale(auth()->user()->language ?? 'en');
 
+
         return $table
             ->columns([
                 TextColumn::make('firefly_account_name')
@@ -139,7 +140,7 @@ class AccountResource extends Resource
                     ->label(__('menu.sender')),
                 TextColumn::make('shortcodes')
                     ->label(__('menu.shortcodes'))
-                    ->formatStateUsing(fn($record) => implode(', ', $record->getShortcodeList())),
+                    ->getStateUsing(fn ($record) => implode(', ', $record->getShortcodeList())),
                 TextColumn::make('budget_id')
                     ->label(__('widget.budget')),
             ])
