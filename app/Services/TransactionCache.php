@@ -51,7 +51,7 @@ class TransactionCache
                 $allTransactions = array_merge($allTransactions, $output);
             }
 
-            Cache::put($cacheKey, $allTransactions, now()->addMinutes(15));
+            Cache::put($cacheKey, $allTransactions, now()->addHours(6));
             return $allTransactions;
         } finally {
             optional($lock)->release();
@@ -61,9 +61,9 @@ class TransactionCache
     /**
      * Clear the cached transactions for the current user.
      */
-    public static function clear(): void
+    public static function clear(?int $userId = null): void
     {
-        $userId = Auth::id();
+        $userId = $userId ?? Auth::id();
         Cache::forget('monthly_transactions_' . $userId);
     }
 }

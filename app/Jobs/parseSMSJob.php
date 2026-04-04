@@ -164,6 +164,13 @@ class parseSMSJob implements ShouldQueue
             $localAccount = Account::where('firefly_account_id', $status['attributes']->source_id)->first();
             $user_id = $localAccount?->user_id ?? 1;
             $user = User::find($user_id);
+
+            // Clear dashboard transaction cache for affected users
+            \App\Services\TransactionCache::clear($user_id);
+            if ($user_id !== 1) {
+                \App\Services\TransactionCache::clear(1);
+            }
+
             Alert::newTransaction(transaction: $status['attributes'], user: $user);
 
             $budget_id = $status['attributes']->budget_id ?? null;
