@@ -113,7 +113,11 @@ class parseSMSJob implements ShouldQueue
                     SMS::processInvalidSMS(sms: $this->sms, errors: 'Invalid Transaction Type: ' . ($output['transactionType'] ?? 'null'), keep: true);
                     return;
                 }
-
+            } catch (\Exception $e) {
+                SMS::processInvalidSMS(sms: $this->sms, message: 'Internal Error (LLM)', errors: 'Internal Error: ' . $e->getMessage(), keep: true);
+                return;
+            }
+            try {
                 if (Setting::getBool('parsesms_regex_enabled', true) && isset($output['regularExp']) && $output['regularExp'] !== '') {
                     SMSRegularExp::storeRegularExp(
                         message: $this->sms->message,
@@ -124,6 +128,11 @@ class parseSMSJob implements ShouldQueue
                         isValid: true
                     );
                 }
+            } catch (\Exception $e) {
+                SMS::processInvalidSMS(sms: $this->sms, message: 'Internal Error (storeRegularExp)', errors: 'Internal Error: ' . $e->getMessage(), keep: true);
+                return;
+            }
+            try {
                 $transaction['type'] = $output['transactionType'];
                 $transaction['amount'] = $output['amount'] ?? null;
                 $transaction['currency'] = $output['currency'] ?? null;
@@ -139,13 +148,18 @@ class parseSMSJob implements ShouldQueue
                 $transaction['feesCurrency'] = $output['feesCurrency'] ?? null;
 
                 $detectedCategory = ParseSMS::detectCategory(message: $this->sms->message, transactionType: $output['transactionType'], matches: $output);
+            } catch (\Exception $e) {
+                SMS::processInvalidSMS(sms: $this->sms, message: 'Internal Error (detectCategory)', errors: 'Internal Error: ' . $e->getMessage(), keep: true);
+                return;
+            }
+            try {
                 $transaction['category_name'] = $detectedCategory['category'] ?? null;
                 $transaction['description'] = Transaction::generateDescription($this->sms->message);
                 $transaction['notes'] = $this->SMS_sender->sender . "\n" . $this->sms->message;
                 $transaction['tags'] = ['by AI'];
                 $newTransaction = true;
             } catch (\Exception $e) {
-                SMS::processInvalidSMS(sms: $this->sms, message: 'Internal Error',errors: 'Internal Error: ' . $e->getMessage(), keep: true);
+                SMS::processInvalidSMS(sms: $this->sms, message: 'Internal Error (generateDescription)', errors: 'Internal Error: ' . $e->getMessage(), keep: true);
                 return;
             }
         }
@@ -227,8 +241,8 @@ class parseSMSJob implements ShouldQueue
                         message: __('alert.abnormal_destination_message', [
                             'multiplier' => $destAbnormal['multiplier'],
                             'destination' => $destName,
-                            'amount' => str_replace('.00','',number_format($destAbnormal['amount'], 2)),
-                            'average_amount' => str_replace('.00','',number_format($destAbnormal['average_amount'], 2)),
+                            'amount' => str_replace('.00', '', number_format($destAbnormal['amount'], 2)),
+                            'average_amount' => str_replace('.00', '', number_format($destAbnormal['average_amount'], 2)),
                         ]),
                         user_id: $user_id,
                         transaction_journal_id: $status['attributes']->transaction_journal_id,
@@ -243,8 +257,8 @@ class parseSMSJob implements ShouldQueue
             // 2 Transportation transactions today, which is unusual (average: 0.4 per day)
             $categoryName = $status['attributes']->category_name ?? null;
             if ($categoryName) {
-                if(isset($status['attributes']->date)){
-                $date = Carbon::parse($status['attributes']->date)->format('Y-m-d');
+                if (isset($status['attributes']->date)) {
+                    $date = Carbon::parse($status['attributes']->date)->format('Y-m-d');
                 } else {
                     $date = null;
                 }
@@ -260,7 +274,7 @@ class parseSMSJob implements ShouldQueue
                         message: __('alert.unusual_category_frequency_message', [
                             'count' => $freqResult['today_count'],
                             'category' => $categoryName,
-                            'average' => str_replace('.00','',$freqResult['average_daily_count']),
+                            'average' => str_replace('.00', '', $freqResult['average_daily_count']),
                         ]),
                         user_id: $user_id,
                         data: $freqResult,
@@ -269,7 +283,6 @@ class parseSMSJob implements ShouldQueue
                     );
                 }
             }
-
         } else {
             SMS::processInvalidSMS(sms: $this->sms, message: 'Failed to create transaction',  errors: 'Failed to create transaction: ' . $status['error'] . ' ' . print_r($transaction, true), keep: true);
             return;
