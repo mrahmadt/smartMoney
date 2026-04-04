@@ -118,6 +118,7 @@ class Account extends Model
      * Find account by SMS sender name and shortcode.
      * Priority 1: sender + shortcode match
      * Priority 2: no sender set + shortcode match
+     * Priority 3: sender match only (no shortcode match) — last resort
      * Returns null if no match.
      */
     public static function findBySenderAndShortcode(string $senderName, string $shortcode): ?static
@@ -132,7 +133,7 @@ class Account extends Model
         // Priority 1: sender + shortcode match
         if ($sender) {
             foreach ($all as $account) {
-                if ($account->sender_id === $sender->id && is_array($account->shortcodes) && in_array($shortcode, $account->shortcodes)) {
+                if ($account->sender_id === $sender->id && $account->hasShortcode($shortcode)) {
                     return $account;
                 }
             }
@@ -140,11 +141,76 @@ class Account extends Model
 
         // Priority 2: no sender set + shortcode match
         foreach ($all as $account) {
-            if ($account->sender_id === null && is_array($account->shortcodes) && in_array($shortcode, $account->shortcodes)) {
+            if ($account->sender_id === null && $account->hasShortcode($shortcode)) {
                 return $account;
             }
         }
 
+        // Priority 3: sender match only (no shortcode match) — last resort
+        if ($sender) {
+            foreach ($all as $account) {
+                if ($account->sender_id === $sender->id) {
+                    return $account;
+                }
+            }
+        }
+
         return null;
+    }
+
+    /**
+     * Check if this account has the given shortcode.
+     * Supports both flat ["xxx"] and structured [{"shortcode":"xxx","budget_id":5}] formats.
+     */
+    public function hasShortcode(string $shortcode): bool
+    {
+        if (!is_array($this->shortcodes)) {
+            return false;
+        }
+
+        foreach ($this->shortcodes as $entry) {
+            if (is_string($entry) && $entry === $shortcode) {
+                return true;
+            }
+            if (is_array($entry) && ($entry['shortcode'] ?? null) === $shortcode) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Get the budget_id for a specific shortcode.
+     * Returns shortcode-specific budget if defined, otherwise the account's default budget_id.
+     */
+    public function getBudgetForShortcode(string $shortcode): ?int
+    {
+        if (is_array($this->shortcodes)) {
+            foreach ($this->shortcodes as $entry) {
+                if (is_array($entry) && ($entry['shortcode'] ?? null) === $shortcode) {
+                    if (!empty($entry['budget_id'])) {
+                        return (int) $entry['budget_id'];
+                    }
+                    break;
+                }
+            }
+        }
+
+        return $this->budget_id;
+    }
+
+    /**
+     * Get flat list of shortcode strings (for display).
+     */
+    public function getShortcodeList(): array
+    {
+        if (!is_array($this->shortcodes)) {
+            return [];
+        }
+
+        return array_map(function ($entry) {
+            return is_string($entry) ? $entry : ($entry['shortcode'] ?? '');
+        }, $this->shortcodes);
     }
 }

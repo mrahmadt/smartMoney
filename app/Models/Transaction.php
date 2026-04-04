@@ -137,8 +137,9 @@ public function createTransaction($transaction, $SMS_sender)
 
         $transaction['source_id'] = $myaccount->firefly_account_id;
 
-        if ($myaccount->budget_id) {
-            $transaction['budget_id'] = $myaccount->budget_id;
+        $budgetId = $myaccount->getBudgetForShortcode($transaction['MyAccountNumber']);
+        if ($budgetId) {
+            $transaction['budget_id'] = $budgetId;
         }
 
         if (empty($transaction['currency'])) {

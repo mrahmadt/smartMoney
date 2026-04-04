@@ -10,7 +10,7 @@ use App\Models\User;
 use App\Services\fireflyIII;
 use BackedEnum;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TagsInput;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -92,9 +92,23 @@ class AccountResource extends Resource
                     ->options(SMSSender::pluck('sender', 'id'))
                     ->searchable()
                     ->nullable(),
-                TagsInput::make('shortcodes')
+                Repeater::make('shortcodes')
                     ->label(__('menu.shortcodes'))
-                    ->placeholder('Add shortcode'),
+                    ->schema([
+                        TextInput::make('shortcode')
+                            ->label(__('menu.shortcodes'))
+                            ->required(),
+                        Select::make('budget_id')
+                            ->label(__('widget.budget'))
+                            ->options($budgets)
+                            ->searchable()
+                            ->nullable()
+                            ->helperText(__('menu.shortcode_budget_hint')),
+                    ])
+                    ->columns(2)
+                    ->defaultItems(0)
+                    ->addActionLabel(__('menu.add_shortcode'))
+                    ->columnSpanFull(),
                 Select::make('budget_id')
                     ->label(__('widget.budget'))
                     ->options($budgets)
@@ -121,7 +135,7 @@ class AccountResource extends Resource
                     ->label(__('menu.sender')),
                 TextColumn::make('shortcodes')
                     ->label(__('menu.shortcodes'))
-                    ->formatStateUsing(fn ($state) => is_array($state) ? implode(', ', $state) : $state),
+                    ->formatStateUsing(fn ($record) => implode(', ', $record->getShortcodeList())),
                 TextColumn::make('budget_id')
                     ->label(__('widget.budget')),
             ])
