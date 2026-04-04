@@ -92,6 +92,11 @@ class AccountResource extends Resource
                     ->options(SMSSender::pluck('sender', 'id'))
                     ->searchable()
                     ->nullable(),
+                Select::make('budget_id')
+                    ->label(__('widget.budget'))
+                    ->options($budgets)
+                    ->searchable()
+                    ->nullable(),
                 Repeater::make('shortcodes')
                     ->label(__('menu.shortcodes'))
                     ->schema([
@@ -109,11 +114,7 @@ class AccountResource extends Resource
                     ->defaultItems(0)
                     ->addActionLabel(__('menu.add_shortcode'))
                     ->columnSpanFull(),
-                Select::make('budget_id')
-                    ->label(__('widget.budget'))
-                    ->options($budgets)
-                    ->searchable()
-                    ->nullable(),
+
             ]);
     }
 
@@ -135,7 +136,7 @@ class AccountResource extends Resource
                     ->label(__('menu.sender')),
                 TextColumn::make('shortcodes')
                     ->label(__('menu.shortcodes'))
-                    ->formatStateUsing(fn ($record) => implode(', ', $record->getShortcodeList())),
+                    ->formatStateUsing(fn($record) => implode(', ', $record->getShortcodeList())),
                 TextColumn::make('budget_id')
                     ->label(__('widget.budget')),
             ])
