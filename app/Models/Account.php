@@ -131,9 +131,10 @@ class Account extends Model
      * Priority 2: no sender set + shortcode match
      * Priority 3: guess by matching shortcode against IBAN/account_number suffix (if enabled)
      * Priority 4: sender match only (no shortcode match) — last resort (if enabled)
-     * Returns null if no match.
+     *
+     * @return array{account: static, match: string}|null
      */
-    public static function findBySenderAndShortcode(string $senderName, string $shortcode): ?static
+    public static function findBySenderAndShortcode(string $senderName, string $shortcode): ?array
     {
         $senderName = strtolower($senderName);
 
@@ -146,7 +147,7 @@ class Account extends Model
         if ($sender) {
             foreach ($all as $account) {
                 if ($account->sender_id === $sender->id && $account->hasShortcode($shortcode)) {
-                    return $account;
+                    return ['account' => $account, 'match' => 'shortcode'];
                 }
             }
         }
@@ -154,7 +155,7 @@ class Account extends Model
         // Priority 2: no sender set + shortcode match
         foreach ($all as $account) {
             if ($account->sender_id === null && $account->hasShortcode($shortcode)) {
-                return $account;
+                return ['account' => $account, 'match' => 'shortcode'];
             }
         }
 
@@ -169,10 +170,10 @@ class Account extends Model
                     $cleanIban = $account->iban ? preg_replace('/[\s\-]/', '', $account->iban) : null;
                     $cleanAccountNumber = $account->account_number ? preg_replace('/[\s\-]/', '', $account->account_number) : null;
                     if ($cleanIban && str_ends_with($cleanIban, $cleanShortcode)) {
-                        return $account;
+                        return ['account' => $account, 'match' => 'guess'];
                     }
                     if ($cleanAccountNumber && str_ends_with($cleanAccountNumber, $cleanShortcode)) {
-                        return $account;
+                        return ['account' => $account, 'match' => 'guess'];
                     }
                 }
             }
@@ -182,7 +183,7 @@ class Account extends Model
         if ($sender && Setting::getBool('account_fallback_sender_only', false)) {
             foreach ($all as $account) {
                 if ($account->sender_id === $sender->id) {
-                    return $account;
+                    return ['account' => $account, 'match' => 'sender_fallback'];
                 }
             }
         }

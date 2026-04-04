@@ -129,10 +129,19 @@ public function createTransaction($transaction, $SMS_sender)
             unset($transaction['category_id']);
         }
 
-        $myaccount = Account::findBySenderAndShortcode(senderName: $this->SMS_sender->sender, shortcode: $transaction['MyAccountNumber']);
-        if (!$myaccount) {
+        $accountResult = Account::findBySenderAndShortcode(senderName: $this->SMS_sender->sender, shortcode: $transaction['MyAccountNumber']);
+        if (!$accountResult) {
             $output['error'] = 'MyAccountNumber does not match any account';
             return $output;
+        }
+
+        $myaccount = $accountResult['account'];
+        $matchMethod = $accountResult['match'];
+
+        if ($matchMethod === 'guess') {
+            $transaction['tags'][] = 'shortcode:guess';
+        } elseif ($matchMethod === 'sender_fallback') {
+            $transaction['tags'][] = 'shortcode:sender_fallback';
         }
 
         $transaction['source_id'] = $myaccount->firefly_account_id;

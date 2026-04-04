@@ -139,14 +139,22 @@ class AccountResource extends Resource
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('currency_code')
-                    ->label(__('menu.currency_code')),
+                    ->label(__('menu.currency_code'))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('user.name')
-                    ->label(__('menu.user')),
+                    ->label(__('menu.user'))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('sender.sender')
                     ->label(__('menu.sender')),
                 TextColumn::make('shortcodes')
                     ->label(__('menu.shortcodes'))
                     ->getStateUsing(fn ($record) => implode(', ', $record->getShortcodeList())),
+                TextColumn::make('iban')
+                    ->label('IBAN')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('account_number')
+                    ->label(__('menu.account_number'))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('budget_id')
                     ->label(__('widget.budget')),
             ])
