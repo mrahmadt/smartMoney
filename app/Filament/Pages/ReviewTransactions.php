@@ -96,18 +96,19 @@ class ReviewTransactions extends Page implements HasTable
                 TextColumn::make('currentCategory.name')
                     ->label(__('widget.category'))
                     ->badge()
-                    ->color('primary'),
+                    ->color('primary')
+                    ->formatStateUsing(fn ($record) => $record->currentCategory?->translatedName()),
                 TextColumn::make('alternative_category_ids')
                     ->label(__('menu.alternative_categories'))
                     ->html()
                     ->getStateUsing(function ($record) {
                         $ids = $record->alternative_category_ids ?? [];
                         if (empty($ids)) return '-';
-                        $categories = Category::whereIn('id', $ids)->pluck('name', 'id');
+                        $categories = Category::whereIn('id', $ids)->get();
                         $buttons = [];
-                        foreach ($categories as $id => $name) {
-                            $escapedName = e($name);
-                            $buttons[] = '<span style="display:inline-block;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;border-radius:6px;padding:4px 14px;font-size:12px;font-weight:500;cursor:pointer;margin:4px 4px 4px 0;" wire:click="applyAlternative(' . $record->id . ', ' . $id . ')" onmouseover="this.style.opacity=\'0.7\'" onmouseout="this.style.opacity=\'1\'">' . $escapedName . '</span>';
+                        foreach ($categories as $category) {
+                            $escapedName = e($category->translatedName());
+                            $buttons[] = '<span style="display:inline-block;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;border-radius:6px;padding:4px 14px;font-size:12px;font-weight:500;cursor:pointer;margin:4px 4px 4px 0;" wire:click="applyAlternative(' . $record->id . ', ' . $category->id . ')" onmouseover="this.style.opacity=\'0.7\'" onmouseout="this.style.opacity=\'1\'">' . $escapedName . '</span>';
                         }
                         return new HtmlString(implode(' ', $buttons));
                     }),

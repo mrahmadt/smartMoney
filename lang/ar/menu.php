@@ -76,4 +76,6 @@ return [
     'mfa_required' => 'المصادقة الثنائية مطلوبة',
     'mark_all_read' => 'تحديد الكل كمقروء',
     'all_marked_read' => 'تم تحديد جميع التنبيهات كمقروءة',
+    'translations' => 'الترجمات',
+    'translated_name' => 'الاسم المترجم',
 ];

@@ -67,14 +67,14 @@ class CategoryMappingResource extends Resource
                     ->unique(ignoreRecord: true),
                 Select::make('category_id')
                     ->label(__('widget.category'))
-                    ->options(Category::orderBy('name')->pluck('name', 'id'))
+                    ->options(fn () => Category::orderBy('name')->get()->mapWithKeys(fn ($c) => [$c->id => $c->translatedName()]))
                     ->searchable()
                     ->required(),
                 Select::make('alternative_category_ids')
                     ->label(__('menu.alternative_categories'))
                     ->multiple()
                     ->searchable()
-                    ->options(Category::orderBy('name')->pluck('name', 'id'))
+                    ->options(fn () => Category::orderBy('name')->get()->mapWithKeys(fn ($c) => [$c->id => $c->translatedName()]))
                     ->helperText(__('menu.alternative_categories_hint')),
                 Actions::make([
                     Action::make('suggestAlternatives')
@@ -184,7 +184,8 @@ class CategoryMappingResource extends Resource
                 TextColumn::make('category.name')
                     ->label(__('widget.category'))
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->formatStateUsing(fn ($record) => $record->category?->translatedName()),
                 TextColumn::make('updated_at')
                     ->label(__('widget.date'))
                     ->dateTime()

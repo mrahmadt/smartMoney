@@ -36,15 +36,15 @@ class PendingCategoryReviewsWidget extends Widget
 
         // Preload all alternative category names in one query
         $allAltIds = $reviews->pluck('alternative_category_ids')->flatten()->unique()->filter()->values();
-        $categoryMap = $allAltIds->isNotEmpty()
-            ? Category::whereIn('id', $allAltIds)->pluck('name', 'id')
+        $categoryModels = $allAltIds->isNotEmpty()
+            ? Category::whereIn('id', $allAltIds)->get()->keyBy('id')
             : collect();
 
-        $this->reviews = $reviews->map(function ($review) use ($categoryMap) {
+        $this->reviews = $reviews->map(function ($review) use ($categoryModels) {
                 $altCategories = [];
                 foreach ($review->alternative_category_ids ?? [] as $id) {
-                    if ($categoryMap->has($id)) {
-                        $altCategories[(int) $id] = $categoryMap[$id];
+                    if ($categoryModels->has($id)) {
+                        $altCategories[(int) $id] = $categoryModels[$id]->translatedName();
                     }
                 }
                 return [
@@ -53,7 +53,7 @@ class PendingCategoryReviewsWidget extends Widget
                     'amount' => number_format($review->transaction_amount, 0, '.', ','),
                     'currency_code' => $review->currency_code ?? '',
                     'date' => $review->transaction_date->format('M d, g:ia'),
-                    'current_category' => $review->currentCategory?->name ?? 'Unknown',
+                    'current_category' => $review->currentCategory?->translatedName() ?? 'Unknown',
                     'alternatives' => $altCategories,
                     'firefly_transaction_id' => $review->firefly_transaction_id,
                 ];

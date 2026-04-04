@@ -13,6 +13,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\KeyValue;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -62,6 +63,13 @@ class CategoryResource extends Resource
                     ->required()
                     ->unique(ignoreRecord: true)
                     ->columnSpanFull(),
+                KeyValue::make('translations')
+                    ->label(__('menu.translations'))
+                    ->keyLabel(__('menu.language'))
+                    ->valueLabel(__('menu.name'))
+                    ->keyPlaceholder('ar')
+                    ->valuePlaceholder(__('menu.translated_name'))
+                    ->columnSpanFull(),
                 Toggle::make('enable_prompt')
                     ->label(__('menu.enable_prompt'))
                     ->default(true)
@@ -85,7 +93,8 @@ class CategoryResource extends Resource
                 TextColumn::make('name')
                     ->label(__('menu.name'))
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->formatStateUsing(fn ($record) => $record->translatedName()),
                 TextColumn::make('mappings_count')
                     ->label(__('menu.category_mappings'))
                     ->counts('mappings')

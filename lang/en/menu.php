@@ -76,4 +76,6 @@ return [
     'mfa_required' => 'MFA Required',
     'mark_all_read' => 'Mark All as Read',
     'all_marked_read' => 'All alerts marked as read',
+    'translations' => 'Translations',
+    'translated_name' => 'Translated name',
 ];

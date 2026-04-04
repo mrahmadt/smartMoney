@@ -8,11 +8,25 @@ use App\Services\fireflyIII;
 
 class Category extends Model
 {
-    protected $fillable = ['name', 'category_prompt', 'enable_prompt'];
+    protected $fillable = ['name', 'translations', 'category_prompt', 'enable_prompt'];
 
     protected $casts = [
         'enable_prompt' => 'boolean',
+        'translations' => 'array',
     ];
+
+    /**
+     * Get the translated name for the current locale.
+     * Falls back to the English name if no translation exists.
+     */
+    public function translatedName(): string
+    {
+        $locale = app()->getLocale();
+        if (!empty($this->translations[$locale])) {
+            return $this->translations[$locale];
+        }
+        return $this->name;
+    }
 
     public function mappings(): HasMany
     {
