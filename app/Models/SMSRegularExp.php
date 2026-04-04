@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 class SMSRegularExp extends Model
 {
@@ -16,7 +17,6 @@ class SMSRegularExp extends Model
         'transactionType',
         'regularExp',
         'regularExpMD5',
-        'stripNewLines',
         'createdBy',
         'data',
         'is_active',
@@ -28,7 +28,6 @@ class SMSRegularExp extends Model
     {
         return [
             'data' => 'array',
-            'stripNewLines' => 'boolean',
             'is_active' => 'boolean',
             'is_validTransaction' => 'boolean',
             'is_validRegularExp' => 'boolean',
@@ -45,9 +44,8 @@ class SMSRegularExp extends Model
             ->where('is_active', true)
             ->where('is_validRegularExp', $is_validRegularExp)
             ->where('is_validTransaction', $is_validTransaction)
-            ->get(['id', 'sender_id', 'transactionType', 'regularExp', 'stripNewLines']);
+            ->get(['id', 'sender_id', 'transactionType', 'regularExp']);
         foreach ($regularExps as $regExp) {
-            if ($regExp->stripNewLines) $message = preg_replace('/[\r\n]+/', '', $message);
             $regexResult = preg_match($regExp->regularExp, $message, $matches);
             if ($regexResult) {
                 $named = array_filter(
@@ -79,15 +77,26 @@ class SMSRegularExp extends Model
 
     public static function storeRegularExp($message, $regularExp, $sender_id, $transactionType, $ai_output = null, $isValid = true)
     {
+        Log::debug('Storing regular expression', [
+            'sender_id' => $sender_id,
+            'transactionType' => $transactionType,
+            'regularExp' => $regularExp,
+            'message' => $message,
+            'ai_output' => $ai_output,
+            'isValid' => $isValid,
+        ]);
         $regexResult = null;
-        $stripNewLines = false;
         $matches = [];
         if ($regularExp !== '' && $transactionType !== '') {
-            $regexResult = preg_match($regularExp, $message, $matches);
-            if ($regexResult == 0) {
-                $message = preg_replace('/[\r\n]+/', '', $message);
-                $regexResult = preg_match($regularExp, $message, $matches);
-                $stripNewLines = true;
+            try {
+                $regexResult = @preg_match($regularExp, $message, $matches);
+                if ($regexResult === false) {
+                    Log::error('Invalid regex pattern', ['regularExp' => $regularExp, 'error' => preg_last_error_msg()]);
+                    $regexResult = 0;
+                }
+            } catch (\Exception $e) {
+                Log::error('Regex preg_match exception', ['regularExp' => $regularExp, 'error' => $e->getMessage()]);
+                $regexResult = 0;
             }
 
             $is_validRegularExp = false;
@@ -116,7 +125,6 @@ class SMSRegularExp extends Model
                     'transactionType' => $transactionType,
                     'regularExp' => $regularExp,
                     'regularExpMD5' => $regularExpMD5,
-                    'stripNewLines' => $stripNewLines,
                     'createdBy' => 'system',
                     'data' => [
                         'sample_smsMessage' => $message,
@@ -125,20 +133,19 @@ class SMSRegularExp extends Model
                     ],
                     'is_active' => true,
                     'is_validTransaction' => $isValid,
-                    'is_validRegularExp' => $is_validRegularExp, //it means there was an error in the regex pattern, not just that it didn't match
+                    'is_validRegularExp' => $is_validRegularExp,
                 ];
                 SMSRegularExp::create($smsregular_exps);
             }else{
                 $existingExp->update([
                     'transactionType' => $transactionType,
-                    'stripNewLines' => $stripNewLines,
                     'data' => [
                         'sample_smsMessage' => $message,
                         'ai_output' => $ai_output,
                         'regular_expMatches' => $matches,
                     ],
                     'is_validTransaction' => $isValid,
-                    'is_validRegularExp' => $is_validRegularExp, //it means there was an error in the regex pattern, not just that it didn't match
+                    'is_validRegularExp' => $is_validRegularExp,
                 ]);
             }
         }

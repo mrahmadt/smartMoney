@@ -113,26 +113,23 @@ class parseSMSJob implements ShouldQueue
                     SMS::processInvalidSMS(sms: $this->sms, errors: 'Invalid Transaction Type: ' . ($output['transactionType'] ?? 'null'), keep: true);
                     return;
                 }
-            } catch (\Exception $e) {
-                SMS::processInvalidSMS(sms: $this->sms, message: 'Internal Error (LLM)', errors: 'Internal Error: ' . $e->getMessage(), keep: true);
-                return;
-            }
-            try {
-                if (Setting::getBool('parsesms_regex_enabled', true) && isset($output['regularExp']) && $output['regularExp'] !== '') {
-                    SMSRegularExp::storeRegularExp(
-                        message: $this->sms->message,
-                        regularExp: $output['regularExp'],
-                        sender_id: $this->SMS_sender->id,
-                        transactionType: $output['transactionType'],
-                        ai_output: $output,
-                        isValid: true
-                    );
+                if (Setting::getBool('parsesms_regex_enabled', true)) {
+                    try {
+                        $generatedRegex = ParseSMS::generateRegex($this->sms->message, $output);
+                        if ($generatedRegex) {
+                            SMSRegularExp::storeRegularExp(
+                                message: $this->sms->message,
+                                regularExp: $generatedRegex,
+                                sender_id: $this->SMS_sender->id,
+                                transactionType: $output['transactionType'],
+                                ai_output: $output,
+                                isValid: true
+                            );
+                        }
+                    } catch (\Exception $e) {
+                        \Log::warning('Failed to generate/store regex', ['error' => $e->getMessage()]);
+                    }
                 }
-            } catch (\Exception $e) {
-                SMS::processInvalidSMS(sms: $this->sms, message: 'Internal Error (storeRegularExp)', errors: 'Internal Error: ' . $e->getMessage(), keep: true);
-                return;
-            }
-            try {
                 $transaction['type'] = $output['transactionType'];
                 $transaction['amount'] = $output['amount'] ?? null;
                 $transaction['currency'] = $output['currency'] ?? null;
@@ -148,11 +145,6 @@ class parseSMSJob implements ShouldQueue
                 $transaction['feesCurrency'] = $output['feesCurrency'] ?? null;
 
                 $detectedCategory = ParseSMS::detectCategory(message: $this->sms->message, transactionType: $output['transactionType'], matches: $output);
-            } catch (\Exception $e) {
-                SMS::processInvalidSMS(sms: $this->sms, message: 'Internal Error (detectCategory)', errors: 'Internal Error: ' . $e->getMessage(), keep: true);
-                return;
-            }
-            try {
                 $transaction['category_name'] = $detectedCategory['category'] ?? null;
                 $transaction['description'] = Transaction::generateDescription($this->sms->message);
                 $transaction['notes'] = $this->SMS_sender->sender . "\n" . $this->sms->message;

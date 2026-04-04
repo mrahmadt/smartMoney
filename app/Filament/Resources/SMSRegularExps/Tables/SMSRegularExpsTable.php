@@ -23,8 +23,6 @@ TextColumn::make('sender.sender')
                     ->searchable(),
                 TextColumn::make('regularExpMD5')
                 ->toggleable(isToggledHiddenByDefault: false),
-                IconColumn::make('stripNewLines')
-                    ->boolean(),
                 TextColumn::make('createdBy')
                     ->searchable(),
                 IconColumn::make('is_active')

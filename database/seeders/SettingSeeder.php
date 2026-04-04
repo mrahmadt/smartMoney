@@ -59,6 +59,7 @@ PROMPT,
         Setting::firstOrCreate(['key' => 'parsesms_failback_detect_category_ai'], ['value' => 'true', 'description' => 'Use AI for category detection when Firefly III lookup fails']);
         Setting::firstOrCreate(['key' => 'parsesms_category_model'], ['value' => 'gpt-5-mini', 'description' => 'LLM model for AI-based category detection (null = agent default)']);
         Setting::firstOrCreate(['key' => 'parsesms_model'], ['value' => 'gpt-5-mini', 'description' => 'LLM model for AI-based SMS parsing (null = agent default)']);
+        Setting::firstOrCreate(['key' => 'parsesms_regex_model'], ['value' => 'gpt-5-mini', 'description' => 'LLM model for AI-based regex generation (null = agent default)']);
 
         // Abnormal Transaction Detection
         Setting::firstOrCreate(['key' => 'average_transactions_months'], ['value' => '3', 'description' => 'Number of months to look back when calculating average transaction amounts']);

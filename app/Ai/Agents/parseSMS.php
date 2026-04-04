@@ -19,8 +19,6 @@ class parseSMS implements Agent, Conversational, HasTools, HasStructuredOutput
 {
     use Promptable;
 
-    public bool $includeRegularExp = true;
-
     /**
      * Get the instructions that the agent should follow.
      */
@@ -91,10 +89,6 @@ PROMPT;
             'OtherAccountName' => $schema->string()->required()->description("For payment/transfer: receiver or merchant name. For deposit: sender name. Remove branch numbers if they look like codes (ALDREES 239 -> ALDREES) or 'S121 TAMIMI' -> 'TAMIMI'. Use '' if not present or error != ''."),
             'OtherAccountNumber' => $schema->string()->required()->description("For transfer: receiver account number. For deposit: sender account number. Use '' if not present or error != ''."),
         ];
-
-        if ($this->includeRegularExp) {
-            $data['regularExp'] = $schema->string()->required()->description("Required. PHP regex with named groups to extract at least: amount, currency, MyAccountNumber, OtherAccountName, OtherAccountNumber, fees, feesCurrency, transactionDateTime when possible. Use '' when error != '' or cannot produce.");
-        }
 
         return $data;
     }

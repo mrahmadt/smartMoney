@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Ai\Agents\SMSCategory;
 use App\Ai\Agents\parseSMS as parseSMSAgent;
+use App\Ai\Agents\GenerateRegex;
 use Illuminate\Support\Facades\Log;
 
 class ParseSMS extends Model
@@ -16,7 +17,6 @@ class ParseSMS extends Model
     public static function parseSMSviaLLM($sms_message)
     {
         $agent = new parseSMSAgent();
-        $agent->includeRegularExp = Setting::getBool('parsesms_regex_enabled', true);
         $model = Setting::get('parsesms_model');
         $response = $agent->prompt($sms_message, model: $model);
         $output = json_decode($response->text, true);
@@ -26,6 +26,97 @@ class ParseSMS extends Model
             return false;
         }
         return $output;
+    }
+
+    /**
+     * Generate a PHP regex for the given SMS using AI, based on parsed output as context.
+     */
+    public static function generateRegex(string $smsMessage, array $parsedOutput): ?string
+    {
+        $agent = new GenerateRegex();
+        $agent->smsText = $smsMessage;
+        $agent->parsedFields = $parsedOutput;
+
+        $model = Setting::get('parsesms_regex_model');
+        $response = $agent->prompt("Generate regex for this SMS", model: $model);
+        $output = json_decode($response->text, true);
+
+        \Log::debug('LLM GenerateRegex response', ['output' => $output]);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            \Log::warning('GenerateRegex: invalid JSON response');
+            return null;
+        }
+
+        $regex = $output['regularExp'] ?? null;
+        if (empty($regex)) {
+            return null;
+        }
+
+        // Validate required named groups exist
+        $hasAmount = str_contains($regex, '(?P<amount>');
+        $hasMyAccount = str_contains($regex, '(?P<MyAccountNumber>');
+        $hasOther = str_contains($regex, '(?P<OtherAccountName>') || str_contains($regex, '(?P<OtherAccountNumber>');
+
+        if (!$hasAmount || !$hasMyAccount || !$hasOther) {
+            \Log::warning('GenerateRegex: missing required named groups', [
+                'regex' => $regex,
+                'hasAmount' => $hasAmount,
+                'hasMyAccount' => $hasMyAccount,
+                'hasOther' => $hasOther,
+            ]);
+            return null;
+        }
+
+        // Validate regex actually matches the SMS and extracts correct values
+        try {
+            $result = @preg_match($regex, $smsMessage, $matches);
+
+            if ($result === false || $result === 0) {
+                \Log::warning('GenerateRegex: regex does not match the original SMS', ['regex' => $regex]);
+                return null;
+            }
+
+            // Compare captured values against parsed fields
+            $fieldsToCompare = ['amount', 'currency', 'MyAccountNumber', 'OtherAccountName', 'OtherAccountNumber', 'fees', 'feesCurrency', 'transactionDateTime'];
+            $mismatches = [];
+            foreach ($fieldsToCompare as $field) {
+                $expected = (string) ($parsedOutput[$field] ?? '');
+                $captured = $matches[$field] ?? '';
+                // Skip if parsed field is empty — not expected in regex output
+                if ($expected === '' || $expected === '0') {
+                    continue;
+                }
+                // Skip if regex didn't capture this field (optional field)
+                if ($captured === '') {
+                    continue;
+                }
+                // Normalize: strip commas from amounts for comparison
+                $normalizedExpected = str_replace(',', '', $expected);
+                $normalizedCaptured = str_replace(',', '', trim($captured));
+                if ($normalizedExpected !== $normalizedCaptured) {
+                    $mismatches[$field] = ['expected' => $expected, 'captured' => $captured];
+                }
+            }
+
+            if (!empty($mismatches)) {
+                \Log::warning('GenerateRegex: captured values do not match parsed fields', [
+                    'regex' => $regex,
+                    'mismatches' => $mismatches,
+                ]);
+                return null;
+            }
+
+            \Log::debug('GenerateRegex: regex validated successfully', [
+                'regex' => $regex,
+                'matches' => array_filter($matches, fn($k) => !is_int($k), ARRAY_FILTER_USE_KEY),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('GenerateRegex: regex validation error', ['regex' => $regex, 'error' => $e->getMessage()]);
+            return null;
+        }
+
+        return $regex;
     }
 
     public static function detectCategory($message, $transactionType, $matches, $categories = false)

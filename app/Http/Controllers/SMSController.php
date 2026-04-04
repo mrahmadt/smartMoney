@@ -52,13 +52,6 @@ class SMSController extends Controller
         $sender = $data['query']['sender'];
         if (!SMSSender::isValidSender($sender)) {
             \Log::debug('SMSController: invalid sender', ['sender' => $sender]);
-            $user = User::find(1);
-            $user->notify(new WebPush(
-                title: 'invalid sender',
-                body: 'invalid sender (' . $sender . ')',
-                url: '/alerts'
-            ));
-
             return response()->json(['filter' => true, 'error' => 'invalidSender'], 200);
         }
 

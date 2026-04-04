@@ -90,7 +90,6 @@ test('schema returns all required transaction fields', function () {
         'fees',
         'feesCurrency',
         'transactionDateTime',
-        'regularExp',
         'MyAccountNumber',
         'OtherAccountName',
         'OtherAccountNumber',
@@ -124,7 +123,7 @@ test('schema has exactly 13 fields', function () {
 
     $result = $agent->schema($schema);
 
-    expect(count($result))->toBe(13);
+    expect(count($result))->toBe(12);
 });
 
 // --- implements correct interfaces ---

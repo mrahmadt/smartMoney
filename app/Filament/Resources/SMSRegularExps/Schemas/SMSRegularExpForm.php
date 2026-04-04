@@ -26,8 +26,6 @@ Select::make('sender_id')
                     ->columnSpanFull(),
                 TextInput::make('regularExpMD5')
                     ->required(),
-                Toggle::make('stripNewLines')
-                    ->required(),
                 TextInput::make('createdBy'),
                 TextInput::make('data'),
                 Toggle::make('is_active')

@@ -22,7 +22,6 @@ function createRegExp(int $senderId, array $overrides = []): SMSRegularExp
         'transactionType' => 'withdrawal',
         'regularExp' => '/Purchase.*Amount:\s*(?P<currency>\w+)\s+(?P<amount>[\d,.]+).*At:\s*(?P<OtherAccountName>.+?)\\n.*Account:\s*(?P<MyAccountNumber>\d+)/s',
         'regularExpMD5' => md5('/test/'),
-        'stripNewLines' => false,
         'createdBy' => 'system',
         'data' => [],
         'is_active' => true,
@@ -107,23 +106,6 @@ test('findInvalidRegExp ignores valid transaction regex', function () {
     expect(SMSRegularExp::findInvalidRegExp($senderId, $message))->toBeFalse();
 });
 
-// --- stripNewLines ---
-
-test('findRegExp strips newlines when stripNewLines is true', function () {
-    $senderId = createTestSender();
-    createRegExp($senderId, [
-        'regularExp' => '/Purchase.*Amount:\s*(?P<currency>\w+)\s+(?P<amount>[\d,.]+).*At:\s*(?P<OtherAccountName>\w+).*Account:\s*(?P<MyAccountNumber>\d+)/',
-        'regularExpMD5' => md5('/stripnewlines/'),
-        'stripNewLines' => true,
-    ]);
-
-    $message = "Purchase\nAmount: SAR 50.00\nAt: SHOP\nAccount: 5678";
-
-    $result = SMSRegularExp::findValidRegExp($senderId, $message);
-    expect($result)->not->toBeFalse();
-    expect($result['matches']['amount'])->toBe('50.00');
-});
-
 // --- storeRegularExp ---
 
 test('storeRegularExp creates new regex record', function () {
@@ -188,23 +170,6 @@ test('storeRegularExp marks invalid regex when pattern does not match', function
 
     $record = SMSRegularExp::where('sender_id', $senderId)->first();
     expect($record->is_validRegularExp)->toBeFalse();
-});
-
-test('storeRegularExp tries stripNewLines on failed match', function () {
-    $senderId = createTestSender();
-    // Regex that only works without newlines
-    $regex = '/Purchase Amount: (?P<currency>\w+) (?P<amount>[\d,.]+) At: (?P<OtherAccountName>\w+) Account: (?P<MyAccountNumber>\d+)/';
-    $message = "Purchase Amount: SAR 200.00 At: SHOP Account: 9999";
-
-    SMSRegularExp::storeRegularExp(
-        message: $message,
-        regularExp: $regex,
-        sender_id: $senderId,
-        transactionType: 'withdrawal',
-    );
-
-    $record = SMSRegularExp::where('sender_id', $senderId)->first();
-    expect($record->is_validRegularExp)->toBeTrue();
 });
 
 // --- sender relationship ---
