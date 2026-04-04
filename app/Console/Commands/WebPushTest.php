@@ -79,29 +79,15 @@ class WebPushTest extends Command
             return;
         }
 
-        $user->notify(new class('What is your best food?', 'Pick one of the options below') extends \Illuminate\Notifications\Notification implements \Illuminate\Contracts\Queue\ShouldQueue {
-            use \Illuminate\Bus\Queueable;
-
-            public function __construct(public string $title, public string $body) {}
-
-            public function via($notifiable): array
-            {
-                return [WebPushChannel::class];
-            }
-
-            public function toWebPush($notifiable, $notification): WebPushMessage
-            {
-                return (new WebPushMessage)
-                    ->title($this->title)
-                    ->body($this->body)
-                    ->icon('/img/icon-192x192.png')
-                    ->vibrate([200, 100, 200])
-                    ->action('Pizza', 'pizza')
-                    ->action('Burger', 'burger')
-                    ->data(['question' => 'best_food'])
-                    ->options(['TTL' => 1000]);
-            }
-        });
+        $user->notify(new \App\Notifications\WebPushWithActions(
+            title: 'What is your best food?',
+            body: 'Pick one of the options below',
+            actions: [
+                ['label' => 'Pizza', 'action' => 'pizza'],
+                ['label' => 'Burger', 'action' => 'burger'],
+            ],
+            data: ['question' => 'best_food'],
+        ));
 
         $this->info('Push notification with actions sent to user 1.');
     }
