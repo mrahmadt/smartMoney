@@ -43,7 +43,7 @@ class AdminPanelProvider extends PanelProvider
                 providers: [
                     AppAuthentication::make()->recoverable(true),
                 ],
-                isRequired: fn () => auth()->user()?->mfa_required ?? false,
+                isRequired: fn() => auth()->user()?->mfa_required ?? false,
             )
             ->colors([
                 'primary' => Color::Amber,
@@ -82,6 +82,10 @@ class AdminPanelProvider extends PanelProvider
             ->globalSearch(false)
             // ->topNavigation()
             ->topNavigation(false)
-            ;
+            ->renderHook(
+                'panels::head.end',
+                fn() => '<script src="/js/webpush.js"></script>'
+            )
+        ;
     }
 }
