@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use Filament\Widgets\ChartWidget;
 use App\Services\fireflyIII;
+use App\Services\TransactionCache;
 use App\Models\Account;
 use Illuminate\Support\Facades\Auth;
 
@@ -61,23 +62,14 @@ protected function getOptions(): array
 
     public function getFFData($budget_id, $start = null, $end = null)
     {
-        $cacheKey = 'top_spendingChart_' . Auth::id();
-        $cachedData = cache()->get($cacheKey);
-        if ($cachedData) {
-            return $cachedData;
-        }
+        if ($start == null) $start = date('Y-m-01');
+        if ($end == null) $end = date('Y-m-t');
 
-
-        if ($start == null) $start = date('Y-m-d', strtotime('-30 days'));
-        if ($end == null) $end = date('Y-m-d');
-
-        // if $end > today, set $end to today
-        if(strtotime($end) > strtotime(date('Y-m-d'))) {
+        if (strtotime($end) > strtotime(date('Y-m-d'))) {
             $end = date('Y-m-d');
         }
 
-         $spendingLabels = [];
-        // $spendingLabels should be an array of dates in 'MM-DD' format from $start to $end
+        $spendingLabels = [];
         $period = new \DatePeriod(
             new \DateTime($start),
             new \DateInterval('P1D'),
@@ -91,39 +83,21 @@ protected function getOptions(): array
             $spending[$label] = 0;
         }
 
-        $firefly = new fireflyIII();
+        $transactions = TransactionCache::getMonthlyTransactions();
 
-        $filter = Account::getTransactionFilter();
-        $transactions = [];
-
-        for($page = 1; $page <= 10; $page++){
-            $output = $firefly->getTransactions(start: $start, end:$end, filter: $filter, limit: 200, page: $page, type: 'withdrawal');
-            if(empty($output)){ break; }
-            if(isset($output->data)){
-                foreach($output->data as $transaction){
-                    if(isset($transaction->attributes->transactions)){
-                        $transactions = array_merge($transactions, $transaction->attributes->transactions);
-                    }else{
-                        $transactions[] = $transaction;
-                    }
-                }
-            }else{
-                $transactions = array_merge($transactions, $output);
+        foreach ($transactions as $transaction) {
+            if (($transaction->type ?? '') !== 'withdrawal') {
+                continue;
             }
-
+            $date = substr($transaction->date, 0, 10);
+            if (isset($spending[$date])) {
+                $spending[$date] += (float) $transaction->amount;
+            }
         }
-                    foreach ($transactions as $transaction) {
-                // Extract the date part (up to 'T' character)
-                $date = substr($transaction->date, 0, 10);
-                // Add the transaction amount to the corresponding date
-                $spending[$date] += (float)$transaction->amount;
-            }
-        $data =  [
+
+        return [
             'labels' => $spendingLabels,
             'spending' => array_values($spending),
         ];
-        cache()->put($cacheKey, $data, now()->addHour());
-        return $data;
-
     }
 }

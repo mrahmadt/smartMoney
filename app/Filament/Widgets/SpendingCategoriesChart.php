@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use Filament\Widgets\ChartWidget;
 use App\Services\fireflyIII;
+use App\Services\TransactionCache;
 use App\Models\Account;
 use Illuminate\Support\Facades\Auth;
 
@@ -77,58 +78,9 @@ class SpendingCategoriesChart extends ChartWidget
 
     public function getFFData($budget_id, $start = null, $end = null)
     {
-        $cacheKey = 'top_spendingCategoriesChart_' . Auth::id();
-        $cachedData = cache()->get($cacheKey);
-        if ($cachedData) {
-            return $cachedData;
-        }
+        $transactions = TransactionCache::getMonthlyTransactions();
 
-        if ($start == null) $start = date('Y-m-d', strtotime('-30 days'));
-        if ($end == null) $end = date('Y-m-d');
-
-        // if $end > today, set $end to today
-        if (strtotime($end) > strtotime(date('Y-m-d'))) {
-            $end = date('Y-m-d');
-        }
-
-        $spendingLabels = [];
-        // $spendingLabels should be an array of dates in 'MM-DD' format from $start to $end
-        $period = new \DatePeriod(
-            new \DateTime($start),
-            new \DateInterval('P1D'),
-            new \DateTime($end . ' +1 day')
-        );
-
-        $spending = [];
-        foreach ($period as $date) {
-            $label = $date->format('Y-m-d');
-            $spendingLabels[] = $label;
-            $spending[$label] = 0;
-        }
-
-        $firefly = new fireflyIII();
-
-        $filter = Account::getTransactionFilter();
         $categories = [];
-        $transactions = [];
-
-        for ($page = 1; $page <= 10; $page++) {
-            $output = $firefly->getTransactions(start: $start, end: $end, filter: $filter, limit: 200, page: $page);
-            if (empty($output)) {
-                break;
-            }
-            if (isset($output->data)) {
-                foreach ($output->data as $transaction) {
-                    if (isset($transaction->attributes->transactions)) {
-                        $transactions = array_merge($transactions, $transaction->attributes->transactions);
-                    } else {
-                        $transactions[] = $transaction;
-                    }
-                }
-            } else {
-                $transactions = array_merge($transactions, $output);
-            }
-        }
         foreach ($transactions as $transaction) {
             if ($transaction->category_name) {
                 $category_name = $transaction->category_name;
@@ -137,21 +89,16 @@ class SpendingCategoriesChart extends ChartWidget
             }
 
             if (!isset($categories[$category_name])) {
-                $categories[$category_name] = 0;;
+                $categories[$category_name] = 0;
             }
 
-
-            if ($transaction->type == 'deposit') {
-                // $categories[$category_name]= $categories[$category_name] + $transaction->amount;
-            } elseif ($transaction->type == 'withdrawal' || $transaction->type == 'transfer') {
+            if ($transaction->type == 'withdrawal' || $transaction->type == 'transfer') {
                 $categories[$category_name] = $categories[$category_name] - $transaction->amount;
             }
         }
-        // Convert $categories values to absolute values
         foreach ($categories as $category => $amount) {
             $categories[$category] = abs($amount);
         }
-        cache()->put($cacheKey, $categories, now()->addHour());
 
         return $categories;
     }

@@ -7,6 +7,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
 use App\Services\fireflyIII;
+use App\Services\TransactionCache;
 use App\Models\Account;
 use Illuminate\Support\Facades\Auth;
 use App\Filament\Pages\EditTransactions;
@@ -23,34 +24,8 @@ class RecentTransactions extends TableWidget
     {
         app()->setLocale(Auth::user()->language ?? 'en');
 
-        $cacheKey = 'recent_transactions_' . Auth::id();
-        $cachedData = cache()->get($cacheKey);
-        if ($cachedData) {
-            return $cachedData;
-        }
-        $firefly = new fireflyIII();
         $limit = 5;
-        $filter = Account::getTransactionFilter();
-
-        $start = date('Y-m-d', strtotime('-30 days'));
-        $end = date('Y-m-d');
-
-        $transactions = [];
-        $output = $firefly->getTransactions(start: $start, end: $end, filter: $filter, limit: $limit, page: 1);
-        
-        if (!empty($output)) {
-            if (isset($output->data)) {
-                foreach ($output->data as $transaction) {
-                    if (isset($transaction->attributes->transactions)) {
-                        $transactions = array_merge($transactions, $transaction->attributes->transactions);
-                    } else {
-                        $transactions[] = $transaction;
-                    }
-                }
-            } else {
-                $transactions = array_merge($transactions, $output);
-            }
-        }
+        $transactions = TransactionCache::getMonthlyTransactions();
 
         $allTransactions = [];
         foreach ($transactions as $transaction) {
@@ -67,9 +42,7 @@ class RecentTransactions extends TableWidget
         }
 
         usort($allTransactions, fn($a, $b) => strtotime($b['date']) <=> strtotime($a['date']));
-        $allTransactions = array_slice($allTransactions, 0, $limit, true);
-        cache()->put($cacheKey, $allTransactions, now()->addMinutes(15));
-        return $allTransactions;
+        return array_slice($allTransactions, 0, $limit, true);
     }
 
     public function table(Table $table): Table

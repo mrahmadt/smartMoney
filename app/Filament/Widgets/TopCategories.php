@@ -7,6 +7,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
 use App\Services\fireflyIII;
+use App\Services\TransactionCache;
 use App\Models\Account;
 use Illuminate\Support\Facades\Auth;
 
@@ -20,54 +21,25 @@ class TopCategories extends TableWidget
 
     protected function getTopCategories(): array
     {
-                app()->setLocale(Auth::user()->language ?? 'en');
+        app()->setLocale(Auth::user()->language ?? 'en');
 
-                $cacheKey = 'top_categories_' . Auth::id();
-        $cachedData = cache()->get($cacheKey);
-        if ($cachedData) {
-            return $cachedData;
-        }
-
-        $start = date('Y-m-d', strtotime('-30 days'));
-        $end = date('Y-m-d');
-
-
-        $firefly = new fireflyIII();
         $limit = 5;
-        $filter = Account::getTransactionFilter();
+        $transactions = TransactionCache::getMonthlyTransactions();
 
         $categories = [];
-        $transactions = [];
-        for ($page = 1; $page <= 10; $page++) {
-            $output = $firefly->getTransactions(start: $start, end: $end, filter: $filter, limit: 200, page: $page);
-            if(empty($output)){ break; }
-            if(isset($output->data)){
-                foreach($output->data as $transaction){
-                    if(isset($transaction->attributes->transactions)){
-                        $transactions = array_merge($transactions, $transaction->attributes->transactions);
-                    }else{
-                        $transactions[] = $transaction;
-                    }
-                }
-            }else{
-                $transactions = array_merge($transactions, $output);
+        foreach ($transactions as $transaction) {
+            $category_name = $transaction->category_name ?? __('widget.uncategorized');
+            if (!isset($categories[$category_name])) {
+                $categories[$category_name] = ['Category' => $category_name, 'Amount' => 0];
             }
+            $categories[$category_name]['Amount'] += abs($transaction->amount);
         }
-
-            foreach ($transactions as $transaction) {
-                $category_name = $transaction->category_name ?? __('widget.uncategorized');
-                if (!isset($categories[$category_name])) {
-                    $categories[$category_name] = ['Category' => $category_name, 'Amount' => 0];
-                }
-                $categories[$category_name]['Amount'] += abs($transaction->amount);
-            }
         usort($categories, fn($a, $b) => $b['Amount'] <=> $a['Amount']);
-        if(count($categories) > $limit){
+        if (count($categories) > $limit) {
             $otherCategories = array_slice($categories, $limit, null, true);
-            $categories = array_slice($categories, 0, $limit , true);
+            $categories = array_slice($categories, 0, $limit, true);
             $categories['Other'] = ['Category' => __('widget.other'), 'Amount' => array_sum(array_column($otherCategories, 'Amount'))];
         }
-        cache()->put($cacheKey, $categories, now()->addHour());
         return $categories;
     }
 

@@ -7,6 +7,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
 use App\Services\fireflyIII;
+use App\Services\TransactionCache;
 use App\Models\Account;
 use Illuminate\Support\Facades\Auth;
 use App\Filament\Pages\EditTransactions;
@@ -23,49 +24,17 @@ class TopTransactions extends TableWidget
     {
         app()->setLocale(Auth::user()->language ?? 'en');
 
-        $cacheKey = 'top_transactions_' . Auth::id();
-        $cachedData = cache()->get($cacheKey);
-        if ($cachedData) {
-            return $cachedData;
-        }
-
-        $start = date('Y-m-d', strtotime('-30 days'));
-        $end = date('Y-m-d');
-
-
-        $firefly = new fireflyIII();
         $limit = 10;
-        $filter = Account::getTransactionFilter();
-
+        $transactions = TransactionCache::getMonthlyTransactions();
 
         $allTransactions = [];
-        $transactions = [];
-
-        for ($page = 1; $page <= 10; $page++) {
-            $output = $firefly->getTransactions(start: $start, end: $end, filter: $filter, limit: 200, page: $page);
-            if(empty($output)){ break; }
-            if(isset($output->data)){
-                foreach($output->data as $transaction){
-                    if(isset($transaction->attributes->transactions)){
-                        $transactions = array_merge($transactions, $transaction->attributes->transactions);
-                    }else{
-                        $transactions[] = $transaction;
-                    }
-                }
-            }else{
-                $transactions = array_merge($transactions, $output);
-            }
-
+        foreach ($transactions as $transaction) {
+            $category_name = $transaction->category_name ?? __('widget.uncategorized');
+            $allTransactions[] = ['transaction_journal_id' => $transaction->transaction_journal_id, 'description' => $transaction->description ?? '', 'date' => $transaction->date ?? '', 'destination_name' => $transaction->destination_name ?? __('widget.unknown'), 'Category' => $category_name, 'Amount' => $transaction->amount];
         }
-            foreach ($transactions as $transaction) {
-                $category_name = $transaction->category_name ?? __('widget.uncategorized');
-                $allTransactions[] = ['transaction_journal_id' => $transaction->transaction_journal_id, 'description' => $transaction->description ?? '', 'date' => $transaction->date ?? '', 'destination_name' => $transaction->destination_name ?? __('widget.unknown'), 'Category' => $category_name, 'Amount' => $transaction->amount];
-            }
 
         usort($allTransactions, fn($a, $b) => $b['Amount'] <=> $a['Amount']);
-        $allTransactions = array_slice($allTransactions, 0, $limit , true);
-        cache()->put($cacheKey, $allTransactions, now()->addHour());
-        return $allTransactions;
+        return array_slice($allTransactions, 0, $limit, true);
     }
 
     public function table(Table $table): Table

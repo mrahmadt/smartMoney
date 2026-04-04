@@ -50,8 +50,8 @@ class WebPushTest extends Command
         }
 
         $this->info('Available actions: push, push-actions');
-        $this->info('  php artisan app:test push          — Send simple push to user 1');
-        $this->info('  php artisan app:test push-actions   — Send push with action buttons to user 1');
+        $this->info('  php artisan app:webpush push          — Send simple push to user 1');
+        $this->info('  php artisan app:webpush push-actions   — Send push with action buttons to user 1');
     }
 
     protected function testSimplePush(): void
