@@ -92,6 +92,16 @@ class parseSMSJob implements ShouldQueue
             $transaction['fees'] = $SMSRegularExp['matches']['fees'] ?? null;
             $transaction['feesCurrency'] = $SMSRegularExp['matches']['feesCurrency'] ?? null;
 
+            // Normalize currency fields through CurrencyMap
+            foreach (['currency', 'feesCurrency', 'totalAmountCurrency'] as $currencyField) {
+                if (!empty($transaction[$currencyField])) {
+                    $resolved = \App\Models\CurrencyMap::resolve($transaction[$currencyField]);
+                    if ($resolved) {
+                        $transaction[$currencyField] = $resolved;
+                    }
+                }
+            }
+
             $transaction['category_name'] = $detectedCategory['category'] ?? null;
             $transaction['description'] = Transaction::generateDescription($this->sms->message);
             $transaction['notes'] = $this->SMS_sender->sender . "\n" . $this->sms->message;

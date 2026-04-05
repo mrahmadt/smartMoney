@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
 use App\Services\fireflyIII;
 use App\Models\Setting;
+use Illuminate\Support\Facades\Log;
 
 class Account extends Model
 {
@@ -161,7 +162,9 @@ class Account extends Model
 
         // Priority 3: guess by matching shortcode against IBAN or account_number suffix
         if ($sender && Setting::getBool('account_guess_by_shortcode', false)) {
+            Log::debug('Attempting to guess account by matching shortcode against IBAN/account_number suffix', ['sender' => $senderName, 'shortcode' => $shortcode]);
             $cleanShortcode = preg_replace('/[^0-9]/', '', $shortcode);
+            Log::debug('Cleaned shortcode for matching', ['cleanShortcode' => $cleanShortcode]);
             if (strlen($cleanShortcode) >= 3) {
                 foreach ($all as $account) {
                     if ($account->sender_id !== $sender->id) {
@@ -169,6 +172,7 @@ class Account extends Model
                     }
                     $cleanIban = $account->iban ? preg_replace('/[\s\-]/', '', $account->iban) : null;
                     $cleanAccountNumber = $account->account_number ? preg_replace('/[\s\-]/', '', $account->account_number) : null;
+                    Log::debug('Cleaned IBAN and account number for matching', ['cleanIban' => $cleanIban, 'cleanAccountNumber' => $cleanAccountNumber]);
                     if ($cleanIban && str_ends_with($cleanIban, $cleanShortcode)) {
                         return ['account' => $account, 'match' => 'guess'];
                     }

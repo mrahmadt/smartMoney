@@ -82,4 +82,7 @@ return [
     'add_shortcode' => 'إضافة رمز',
     'account_number' => 'رقم الحساب',
     'new_categories_created' => 'فئات جديدة تم إنشاؤها',
+    'add_sms' => 'إضافة رسالة',
+    'sms_duplicate' => 'تم معالجة هذه الرسالة مسبقاً',
+    'sms_queued' => 'تم إضافة الرسالة للمعالجة',
 ];

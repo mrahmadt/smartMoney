@@ -82,4 +82,7 @@ return [
     'add_shortcode' => 'Add Shortcode',
     'account_number' => 'Account Number',
     'new_categories_created' => 'New categories created',
+    'add_sms' => 'Add SMS',
+    'sms_duplicate' => 'This SMS has already been processed',
+    'sms_queued' => 'SMS queued for processing',
 ];

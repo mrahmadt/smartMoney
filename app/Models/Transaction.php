@@ -48,7 +48,7 @@ public function createTransaction($transaction, $SMS_sender)
             'totalAmountCurrency' => null,
         ];
         $transaction = array_merge($transaction_default, $transaction);
-        $transaction['date'] = self::normalizeTransactionDateTime($transaction['transactionDateTime']);
+        $transaction['date'] = self::normalizeTransactionDateTime(value: $transaction['transactionDateTime'], tz: config('app.timezone', 'UTC'));
         unset($transaction['transactionDateTime']);
 
         if (!in_array($transaction['type'], ['withdrawal', 'deposit', 'payment', 'transfer'])) {

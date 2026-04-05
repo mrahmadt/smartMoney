@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Ai\Agents\SMSCategory;
 use App\Ai\Agents\parseSMS as parseSMSAgent;
 use App\Ai\Agents\GenerateRegex;
+use App\Models\CurrencyMap;
 use Illuminate\Support\Facades\Log;
 
 class ParseSMS extends Model
@@ -25,6 +26,15 @@ class ParseSMS extends Model
         if (json_last_error() !== JSON_ERROR_NONE) {
             return false;
         }
+
+        // Clear currency fields when their amount is empty/zero
+        if (isset($output['fees']) && (empty($output['fees']) || $output['fees'] == 0)) {
+            if(isset($output['feesCurrency'])) $output['feesCurrency'] = '';
+        }
+        if (isset($output['totalAmount']) && (empty($output['totalAmount']) || $output['totalAmount'] == 0)) {
+            if(isset($output['totalAmountCurrency'])) $output['totalAmountCurrency'] = '';
+        }
+
         return $output;
     }
 
@@ -78,8 +88,10 @@ class ParseSMS extends Model
             }
 
             Log::debug('GenerateRegex: regex matches the SMS', ['result' => $result, 'regex' => $regex, 'matches' => array_filter($matches, fn($k) => !is_int($k), ARRAY_FILTER_USE_KEY)]);
+
             // Compare captured values against parsed fields
-            $fieldsToCompare = ['amount', 'currency', 'MyAccountNumber', 'OtherAccountName', 'OtherAccountNumber', 'fees', 'feesCurrency', 'transactionDateTime'];
+            $currencyFields = ['currency', 'feesCurrency', 'totalAmountCurrency'];
+            $fieldsToCompare = ['amount', 'currency', 'totalAmount', 'totalAmountCurrency', 'fees', 'feesCurrency', 'transactionDateTime', 'MyAccountNumber', 'OtherAccountName', 'OtherAccountNumber'];
             $mismatches = [];
             foreach ($fieldsToCompare as $field) {
                 $expected = (string) ($parsedOutput[$field] ?? '');
@@ -92,9 +104,27 @@ class ParseSMS extends Model
                 if ($captured === '') {
                     continue;
                 }
-                // Normalize: strip commas from amounts for comparison
+
                 $normalizedExpected = str_replace(',', '', $expected);
                 $normalizedCaptured = str_replace(',', '', trim($captured));
+
+                // Normalize currency fields through CurrencyMap
+                if (in_array($field, $currencyFields)) {
+                    $resolvedCaptured = CurrencyMap::resolve($normalizedCaptured);
+                    if ($resolvedCaptured) {
+                        $normalizedCaptured = $resolvedCaptured;
+                    }
+                }
+
+                // Normalize datetime — compare as timestamps
+                if ($field === 'transactionDateTime') {
+                    $tsExpected = strtotime($normalizedExpected);
+                    $tsCaptured = strtotime($normalizedCaptured);
+                    if ($tsExpected !== false && $tsCaptured !== false && $tsExpected === $tsCaptured) {
+                        continue;
+                    }
+                }
+
                 if ($normalizedExpected !== $normalizedCaptured) {
                     $mismatches[$field] = ['expected' => $expected, 'captured' => $captured];
                 }
