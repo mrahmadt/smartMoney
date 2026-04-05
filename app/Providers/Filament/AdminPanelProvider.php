@@ -100,7 +100,8 @@ class AdminPanelProvider extends PanelProvider
                     ]);
                     return <<<HTML
                     <script>
-                    if (navigator.userAgent.includes('iOSApp') && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.userLogin) {
+                    if (!window._iOSLoginSent && navigator.userAgent.includes('iOSApp') && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.userLogin) {
+                        window._iOSLoginSent = true;
                         window.webkit.messageHandlers.userLogin.postMessage({$userData});
                     }
                     </script>
