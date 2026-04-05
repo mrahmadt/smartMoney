@@ -99,13 +99,13 @@ class AdminPanelProvider extends PanelProvider
                         'email' => $user->email,
                     ]);
                     return <<<HTML
-                    <script>
-                    if (!window._iOSLoginSent && navigator.userAgent.includes('iOSApp') && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.userLogin) {
-                        window._iOSLoginSent = true;
-                        alert('Sending login data to iOS app');
-                        window.webkit.messageHandlers.userLogin.postMessage({$userData});
-                    }
-                    </script>
+                        <script>
+                        if (!localStorage.getItem('_iOSLoginSent') && navigator.userAgent.includes('iOSApp') && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.userLogin) {
+                            localStorage.setItem('_iOSLoginSent', 'true');
+                            alert('Sending login data to iOS app');
+                            window.webkit.messageHandlers.userLogin.postMessage({$userData});
+                        }
+                        </script>
                     HTML;
                 }
             )
