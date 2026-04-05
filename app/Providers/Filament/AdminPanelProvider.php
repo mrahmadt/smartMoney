@@ -105,6 +105,7 @@ class AdminPanelProvider extends PanelProvider
                     //     // window._iOSLoginSent = true;
                     //     alert('Fake');
                     // }
+                    alert('Fake Alert from web');
                     if (!window._iOSLoginSent && navigator.userAgent.includes('iOSApp') && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.userLogin) {
                         window._iOSLoginSent = true;
                         alert('Sending login data to iOS app');
