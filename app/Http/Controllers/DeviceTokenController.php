@@ -10,6 +10,7 @@ class DeviceTokenController extends Controller
 {
     public function store(Request $request)
     {
+        $request->headers->set('Accept', 'application/json');
         $data = $request->validate([
             'user_id' => ['required', 'integer', 'exists:users,id'],
             'device_token' => ['required', 'string'],
