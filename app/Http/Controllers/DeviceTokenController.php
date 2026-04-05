@@ -10,6 +10,8 @@ class DeviceTokenController extends Controller
 {
     public function store(Request $request)
     {
+        \Log::debug('DeviceToken: received request', ['body' => $request->all(), 'ip' => $request->ip()]);
+
         $request->headers->set('Accept', 'application/json');
         $data = $request->validate([
             'user_id' => ['required', 'integer', 'exists:users,id'],
@@ -24,6 +26,8 @@ class DeviceTokenController extends Controller
                 'platform' => $data['platform'],
             ]
         );
+
+        \Log::debug('DeviceToken: stored', ['user_id' => $data['user_id'], 'platform' => $data['platform']]);
 
         return response()->json(['ok' => true]);
     }
