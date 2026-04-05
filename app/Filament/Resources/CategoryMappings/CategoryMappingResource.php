@@ -24,6 +24,7 @@ use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 use App\Ai\Agents\SuggestAlternativeCategories;
 use App\Models\Setting;
+use Illuminate\Support\Facades\Log;
 
 class CategoryMappingResource extends Resource
 {
@@ -128,6 +129,7 @@ class CategoryMappingResource extends Resource
                                     "Suggest alternative categories for store: {$storeName}",
                                     model: $model
                                 );
+                                Log::debug('LLM suggestAlternatives response', ['text' => $response->text]);
 
                                 $output = json_decode($response->text, true);
                                 if (json_last_error() !== JSON_ERROR_NONE || !isset($output['categories'])) {
@@ -138,7 +140,7 @@ class CategoryMappingResource extends Resource
                                     return;
                                 }
 
-                                $suggestedNames = $output['categories'];
+                                $suggestedNames = array_filter(array_map('trim', explode(',', $output['categories'])));
                                 $suggestedIds = Category::whereIn('name', $suggestedNames)->pluck('id')->toArray();
 
                                 if (empty($suggestedIds)) {
@@ -160,6 +162,7 @@ class CategoryMappingResource extends Resource
                                     ->success()
                                     ->send();
                             } catch (\Exception $e) {
+                                Log::debug('LLM suggestAlternatives error', ['error' => $e->getMessage()]);
                                 Notification::make()
                                     ->title(__('menu.ai_error'))
                                     ->body($e->getMessage())

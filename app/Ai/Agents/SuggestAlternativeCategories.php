@@ -11,6 +11,7 @@ use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Attributes\Model;
 use Laravel\Ai\Promptable;
 use Stringable;
+use Illuminate\Support\Facades\Log;
 
 #[Model("gpt-5-mini")]
 
@@ -31,7 +32,7 @@ class SuggestAlternativeCategories implements Agent, Conversational, HasTools, H
 
         $categories = implode(', ', $this->allCategories);
 
-        return <<<PROMPT
+        $data = <<<PROMPT
 You are a financial transaction categorization assistant. A store named "{$this->storeName}" is currently categorized as "{$this->categoryName}". {$examples}
 
 Suggest 1-4 alternative categories from this list that could also reasonably apply to this store: {$categories}.
@@ -40,10 +41,12 @@ Only suggest categories that make genuine sense — for example, a gas station c
 
 Rules:
 - Do NOT suggest the current category "{$this->categoryName}"
-- Only pick from the provided list of categories
-- If no reasonable alternatives exist, return an empty list
+- ONLY pick from the provided list of categories — do NOT invent or suggest new categories that are not in the list
+- If no reasonable alternatives exist from the list, return an empty string
 - Maximum 4 suggestions
 PROMPT;
+        Log::debug('SuggestAlternativeCategories instructions generated', ['data' => $data]);
+        return $data;
     }
 
     public function messages(): iterable
@@ -59,9 +62,7 @@ PROMPT;
     public function schema(JsonSchema $schema): array
     {
         return [
-            'categories' => $schema->array(
-                $schema->string()->description('A category name from the provided list')
-            )->required()->description('0-4 alternative category names. Empty array if no reasonable alternatives.'),
+            'categories' => $schema->string()->required()->description('Comma-separated list of 0-4 alternative category names from the provided list. Empty string if no reasonable alternatives exist.'),
         ];
     }
 }

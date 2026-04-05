@@ -81,4 +81,5 @@ return [
     'shortcode_budget_hint' => 'Override budget for this shortcode (leave empty to use account default)',
     'add_shortcode' => 'Add Shortcode',
     'account_number' => 'Account Number',
+    'new_categories_created' => 'New categories created',
 ];

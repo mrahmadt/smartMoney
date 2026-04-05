@@ -36,6 +36,7 @@ class EditTransactions extends Page implements HasForms
     public string $transactionId;
     public $budgets;
     public $accounts;
+    public $categories;
 
     /** @var array<string, mixed> */
     public array $data = [];
@@ -82,7 +83,10 @@ class EditTransactions extends Page implements HasForms
                     Select::make('budget_id')->label(__('widget.budget'))
                         ->options(fn() => $this->budgets),
 
-                    TextInput::make('category_name')->label(__('widget.category')),
+                    Select::make('category_name')
+                        ->label(__('widget.category'))
+                        ->options(fn() => $this->categories)
+                        ->searchable(),
                     TagsInput::make('tags')->label(__('widget.tags')),
 
 
@@ -148,7 +152,10 @@ class EditTransactions extends Page implements HasForms
             }
         }
         $this->accounts = $accounts;
-        // $categories = $firefly->getCategories();
+        $categoriesFF = $firefly->getCategories();
+        $this->categories = !empty($categoriesFF)
+            ? array_combine($categoriesFF, $categoriesFF)
+            : [];
         return $transaction;
     }
 }

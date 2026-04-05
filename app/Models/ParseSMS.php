@@ -21,7 +21,7 @@ class ParseSMS extends Model
         $response = $agent->prompt($sms_message, model: $model);
         $output = json_decode($response->text, true);
 
-        Log::debug('LLM parseSMS response', $output);
+        Log::debug('LLM parseSMS response', ['output' => $output]);
         if (json_last_error() !== JSON_ERROR_NONE) {
             return false;
         }

@@ -81,4 +81,5 @@ return [
     'shortcode_budget_hint' => 'تعيين ميزانية مختلفة لهذا الرمز (اتركه فارغاً لاستخدام الميزانية الافتراضية)',
     'add_shortcode' => 'إضافة رمز',
     'account_number' => 'رقم الحساب',
+    'new_categories_created' => 'فئات جديدة تم إنشاؤها',
 ];
