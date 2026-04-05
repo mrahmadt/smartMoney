@@ -60,6 +60,26 @@ class SendBatchedNotifications implements ShouldQueue
         if ($user->alert_via_email) {
             $user->notify(new AlertEmail($title, $emailBody));
         }
+
+        // Send to iOS devices via APNs (if configured)
+        $this->sendToDeviceTokens($user, $title, $webPushBody);
+    }
+
+    protected function sendToDeviceTokens($user, string $title, string $body): void
+    {
+        $deviceTokens = $user->deviceTokens()->where('platform', 'ios')->get();
+        if ($deviceTokens->isEmpty()) {
+            return;
+        }
+
+        // APNs sending - requires laravel-notification-channels/apn package
+        // TODO: Implement when APNs credentials are configured
+        // For now, log that we would send to these devices
+        \Log::debug('APNs push would be sent', [
+            'user_id' => $user->id,
+            'title' => $title,
+            'device_count' => $deviceTokens->count(),
+        ]);
     }
 
     protected function buildFullBody($alerts): string

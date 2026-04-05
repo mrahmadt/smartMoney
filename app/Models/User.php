@@ -85,4 +85,9 @@ class User extends Authenticatable implements HasAppAuthentication, HasAppAuthen
     {
         $this->update(['mfa_recovery_codes' => $codes]);
     }
+
+    public function deviceTokens(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(DeviceToken::class);
+    }
 }

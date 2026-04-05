@@ -86,6 +86,27 @@ class AdminPanelProvider extends PanelProvider
                 'panels::head.end',
                 fn() => '<script src="/js/webpush.js"></script><style>.fi-page-content {row-gap: calc(var(--spacing) * 0.1) !important;} .fi-page-header-main-ctn { padding-top: 1px !important; padding-bottom: 0 !important; }</style>'
             )
+            ->renderHook(
+                'panels::body.end',
+                function () {
+                    $user = auth()->user();
+                    if (!$user) {
+                        return '';
+                    }
+                    $userData = json_encode([
+                        'userId' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                    ]);
+                    return <<<HTML
+                    <script>
+                    if (navigator.userAgent.includes('iOSApp') && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.userLogin) {
+                        window.webkit.messageHandlers.userLogin.postMessage({$userData});
+                    }
+                    </script>
+                    HTML;
+                }
+            )
         ;
     }
 }

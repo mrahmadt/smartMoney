@@ -8,6 +8,7 @@
             this.checkPush();
         },
         checkPush() {
+            if (navigator.userAgent.includes('iOSApp')) return;
             if (typeof SmartMoneyPush === 'undefined') {
                 setTimeout(() => this.checkPush(), 200);
                 return;
