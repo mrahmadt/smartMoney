@@ -100,8 +100,14 @@ class AdminPanelProvider extends PanelProvider
                     ]);
                     return <<<HTML
                     <script>
+                    //     alert('userAgent: ' + navigator.userAgent);
+                    //     if (!window._iOSLoginSent && navigator.userAgent.includes('iOSApp') ) {
+                    //     // window._iOSLoginSent = true;
+                    //     alert('Fake');
+                    // }
                     if (!window._iOSLoginSent && navigator.userAgent.includes('iOSApp') && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.userLogin) {
                         window._iOSLoginSent = true;
+                        alert('Sending login data to iOS app');
                         window.webkit.messageHandlers.userLogin.postMessage({$userData});
                     }
                     </script>
