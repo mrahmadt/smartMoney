@@ -21,7 +21,7 @@ class ParseSMS extends Model
         $response = $agent->prompt($sms_message, model: $model);
         $output = json_decode($response->text, true);
 
-        \Log::debug('LLM parseSMS response', ['output' => $output]);
+        Log::debug('LLM parseSMS response', $output);
         if (json_last_error() !== JSON_ERROR_NONE) {
             return false;
         }
@@ -41,10 +41,10 @@ class ParseSMS extends Model
         $response = $agent->prompt("Generate regex for this SMS", model: $model);
         $output = json_decode($response->text, true);
 
-        \Log::debug('LLM GenerateRegex response', ['output' => $output]);
+        Log::debug('LLM GenerateRegex response', ['output' => $output]);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            \Log::warning('GenerateRegex: invalid JSON response');
+            Log::warning('GenerateRegex: invalid JSON response');
             return null;
         }
 
@@ -59,7 +59,7 @@ class ParseSMS extends Model
         $hasOther = str_contains($regex, '(?P<OtherAccountName>') || str_contains($regex, '(?P<OtherAccountNumber>');
 
         if (!$hasAmount || !$hasMyAccount || !$hasOther) {
-            \Log::warning('GenerateRegex: missing required named groups', [
+            Log::warning('GenerateRegex: missing required named groups', [
                 'regex' => $regex,
                 'hasAmount' => $hasAmount,
                 'hasMyAccount' => $hasMyAccount,
@@ -73,10 +73,11 @@ class ParseSMS extends Model
             $result = @preg_match($regex, $smsMessage, $matches);
 
             if ($result === false || $result === 0) {
-                \Log::warning('GenerateRegex: regex does not match the original SMS', ['regex' => $regex]);
+                Log::warning('GenerateRegex: regex does not match the original SMS', ['regex' => $regex]);
                 return null;
             }
 
+            Log::debug('GenerateRegex: regex matches the SMS', ['result' => $result, 'regex' => $regex, 'matches' => array_filter($matches, fn($k) => !is_int($k), ARRAY_FILTER_USE_KEY)]);
             // Compare captured values against parsed fields
             $fieldsToCompare = ['amount', 'currency', 'MyAccountNumber', 'OtherAccountName', 'OtherAccountNumber', 'fees', 'feesCurrency', 'transactionDateTime'];
             $mismatches = [];
@@ -100,19 +101,19 @@ class ParseSMS extends Model
             }
 
             if (!empty($mismatches)) {
-                \Log::warning('GenerateRegex: captured values do not match parsed fields', [
+                Log::warning('GenerateRegex: captured values do not match parsed fields', [
                     'regex' => $regex,
                     'mismatches' => $mismatches,
                 ]);
                 return null;
             }
 
-            \Log::debug('GenerateRegex: regex validated successfully', [
+            Log::debug('GenerateRegex: regex validated successfully', [
                 'regex' => $regex,
                 'matches' => array_filter($matches, fn($k) => !is_int($k), ARRAY_FILTER_USE_KEY),
             ]);
         } catch (\Exception $e) {
-            \Log::error('GenerateRegex: regex validation error', ['regex' => $regex, 'error' => $e->getMessage()]);
+            Log::error('GenerateRegex: regex validation error', ['regex' => $regex, 'error' => $e->getMessage()]);
             return null;
         }
 

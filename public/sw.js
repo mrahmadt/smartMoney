@@ -57,6 +57,10 @@ self.addEventListener('fetch', function (event) {
 // Push notifications
 self.addEventListener('push', function (event) {
   const data = event.data ? event.data.json() : {};
+
+  // Skip silent ping from subscription cleanup
+  if (data.title === 'ping') return;
+
   const title = data.title || 'Notification';
   const options = {
     body: data.body || '',
