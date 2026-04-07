@@ -64,7 +64,7 @@ class Dashboard extends BaseDashboard
         return $widgets;
     }
 
-    public function getVisibleWidgets(): array
+    public function getWidgets(): array
     {
         $user = Auth::user();
         $enabledKeys = $user->dashboard_widgets ?? User::DEFAULT_DASHBOARD_WIDGETS;
@@ -77,7 +77,7 @@ class Dashboard extends BaseDashboard
             }
         }
 
-        return collect(parent::getVisibleWidgets())
+        return collect(parent::getWidgets())
             ->filter(fn ($widget) => in_array($widget, $allowed))
             ->values()
             ->all();
