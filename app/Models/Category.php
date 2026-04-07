@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use App\Services\fireflyIII;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Services\fireflyIII;
 
 class Category extends Model
 {
@@ -22,10 +22,23 @@ class Category extends Model
     public function translatedName(): string
     {
         $locale = app()->getLocale();
-        if (!empty($this->translations[$locale])) {
+        if (! empty($this->translations[$locale])) {
             return $this->translations[$locale];
         }
+
         return $this->name;
+    }
+
+    /**
+     * Build a map of English name → translated name for the current locale.
+     *
+     * @return array<string, string>
+     */
+    public static function translationMap(): array
+    {
+        return static::all()
+            ->mapWithKeys(fn (self $c) => [$c->name => $c->translatedName()])
+            ->toArray();
     }
 
     public function mappings(): HasMany
@@ -38,16 +51,18 @@ class Category extends Model
      */
     public static function syncFromFirefly(): array
     {
-        $firefly = new fireflyIII();
+        $firefly = new fireflyIII;
         $remoteCategories = $firefly->getCategories();
         $created = 0;
 
         foreach ($remoteCategories as $name) {
             $name = trim($name);
-            if ($name === '') continue;
+            if ($name === '') {
+                continue;
+            }
 
             $exists = static::whereRaw('LOWER(name) = ?', [strtolower($name)])->exists();
-            if (!$exists) {
+            if (! $exists) {
                 static::create(['name' => $name]);
                 $created++;
             }

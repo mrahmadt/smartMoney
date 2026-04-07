@@ -2,10 +2,9 @@
 
 namespace App\Filament\Widgets;
 
-use Filament\Widgets\ChartWidget;
-use App\Services\fireflyIII;
+use App\Models\Category;
 use App\Services\TransactionCache;
-use App\Models\Account;
+use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\Auth;
 
 class SpendingCategoriesChart extends ChartWidget
@@ -15,6 +14,7 @@ class SpendingCategoriesChart extends ChartWidget
     public function getHeading(): ?string
     {
         app()->setLocale(Auth::user()->language ?? 'en');
+
         return __('widget.categories');
     }
 
@@ -79,16 +79,17 @@ class SpendingCategoriesChart extends ChartWidget
     public function getFFData($budget_id, $start = null, $end = null)
     {
         $transactions = TransactionCache::getMonthlyTransactions();
+        $categoryMap = Category::translationMap();
 
         $categories = [];
         foreach ($transactions as $transaction) {
             if ($transaction->category_name) {
-                $category_name = $transaction->category_name;
+                $category_name = $categoryMap[$transaction->category_name] ?? $transaction->category_name;
             } else {
                 $category_name = __('widget.uncategorized');
             }
 
-            if (!isset($categories[$category_name])) {
+            if (! isset($categories[$category_name])) {
                 $categories[$category_name] = 0;
             }
 
