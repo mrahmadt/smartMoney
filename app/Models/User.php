@@ -3,17 +3,20 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
+use Filament\Auth\MultiFactor\App\Contracts\HasAppAuthentication;
+use Filament\Auth\MultiFactor\App\Contracts\HasAppAuthenticationRecovery;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use NotificationChannels\WebPush\HasPushSubscriptions;
-use Filament\Auth\MultiFactor\App\Contracts\HasAppAuthentication;
-use Filament\Auth\MultiFactor\App\Contracts\HasAppAuthenticationRecovery;
 
 class User extends Authenticatable implements HasAppAuthentication, HasAppAuthenticationRecovery
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
     use HasPushSubscriptions;
 
     /**
@@ -86,8 +89,19 @@ class User extends Authenticatable implements HasAppAuthentication, HasAppAuthen
         $this->update(['mfa_recovery_codes' => $codes]);
     }
 
-    public function deviceTokens(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function deviceTokens(): HasMany
     {
         return $this->hasMany(DeviceToken::class);
+    }
+
+    /**
+     * Route notifications for the APNs channel.
+     */
+    public function routeNotificationForApn(): array
+    {
+        return $this->deviceTokens()
+            ->where('platform', 'ios')
+            ->pluck('device_token')
+            ->toArray();
     }
 }

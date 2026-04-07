@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Alert;
 use App\Models\User;
 use App\Notifications\AlertEmail;
+use App\Notifications\ApnPush;
 use App\Notifications\WebPush;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -23,7 +24,9 @@ class SendBatchedNotifications implements ShouldQueue
     public function handle(): void
     {
         $user = User::find($this->userId);
-        if (!$user) return;
+        if (! $user) {
+            return;
+        }
 
         // Grab all un-notified alerts for this user
         $alerts = Alert::where('user_id', $this->userId)
@@ -31,7 +34,9 @@ class SendBatchedNotifications implements ShouldQueue
             ->orderBy('created_at')
             ->get();
 
-        if ($alerts->isEmpty()) return;
+        if ($alerts->isEmpty()) {
+            return;
+        }
 
         // Mark as notified immediately to prevent duplicate sends
         Alert::where('user_id', $this->userId)
@@ -46,8 +51,8 @@ class SendBatchedNotifications implements ShouldQueue
             $webPushBody = $alert->message;
             $emailBody = $alert->message;
             $url = $alert->transaction_journal_id
-                ? '/transactions/' . $alert->transaction_journal_id . '/edit'
-                : '/alerts/' . $alert->id;
+                ? '/transactions/'.$alert->transaction_journal_id.'/edit'
+                : '/alerts/'.$alert->id;
         } else {
             $title = __('alert.batched_title', ['count' => $alerts->count()]);
             $emailBody = $this->buildFullBody($alerts);
@@ -55,7 +60,7 @@ class SendBatchedNotifications implements ShouldQueue
             $url = '/alerts';
         }
 
-        $tag = 'alert-batch-' . $this->userId . '-' . now()->timestamp;
+        $tag = 'alert-batch-'.$this->userId.'-'.now()->timestamp;
         $user->notify(new WebPush($title, $webPushBody, $url, $tag));
         if ($user->alert_via_email) {
             $user->notify(new AlertEmail($title, $emailBody));
@@ -67,19 +72,17 @@ class SendBatchedNotifications implements ShouldQueue
 
     protected function sendToDeviceTokens($user, string $title, string $body): void
     {
-        $deviceTokens = $user->deviceTokens()->where('platform', 'ios')->get();
-        if ($deviceTokens->isEmpty()) {
+        $tokens = $user->routeNotificationForApn();
+        if (empty($tokens)) {
             return;
         }
 
-        // APNs sending - requires laravel-notification-channels/apn package
-        // TODO: Implement when APNs credentials are configured
-        // For now, log that we would send to these devices
-        \Log::debug('APNs push would be sent', [
-            'user_id' => $user->id,
-            'title' => $title,
-            'device_count' => $deviceTokens->count(),
-        ]);
+        try {
+            $user->notify(new ApnPush($title, $body));
+            \Log::debug('APNs push sent', ['user_id' => $user->id, 'device_count' => count($tokens)]);
+        } catch (\Exception $e) {
+            \Log::warning('APNs push failed', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+        }
     }
 
     protected function buildFullBody($alerts): string
@@ -106,6 +109,6 @@ class SendBatchedNotifications implements ShouldQueue
         }
 
         // Hard truncate
-        return mb_substr($titlesOnly, 0, $maxLength - 3) . '...';
+        return mb_substr($titlesOnly, 0, $maxLength - 3).'...';
     }
 }
