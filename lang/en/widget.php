@@ -35,6 +35,7 @@ return [
     'budget' => 'Budget',
     'tags' => 'Tags',
     'notes' => 'Notes',
+    'update_default_category' => 'Update default category for this store',
     'saved' => 'Saved',
     'save' => 'Save',
     'web_push_prompt' => 'Enable browser notifications to stay updated on new transactions and alerts.',

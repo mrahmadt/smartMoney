@@ -3,8 +3,10 @@
 namespace App\Filament\Pages;
 
 use App\Models\Category;
+use App\Models\CategoryMapping;
 use App\Services\fireflyIII;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
@@ -95,6 +97,8 @@ class EditTransactions extends Page implements HasForms
 
                             return $value;
                         }),
+                    Checkbox::make('update_default_category')
+                        ->label(__('widget.update_default_category')),
                     TagsInput::make('tags')->label(__('widget.tags')),
 
                     Textarea::make('notes')
@@ -118,9 +122,20 @@ class EditTransactions extends Page implements HasForms
     public function save(): void
     {
         $state = $this->form->getState();
+        $updateDefaultCategory = $state['update_default_category'] ?? false;
+        unset($state['update_default_category']);
 
         $firefly = new fireflyIII;
-        $output = $firefly->updateTransaction($this->transactionId, $state);
+        $firefly->updateTransaction($this->transactionId, $state);
+
+        if ($updateDefaultCategory && ! empty($state['category_name']) && ! empty($state['destination_name'])) {
+            $category = Category::firstOrCreate(['name' => $state['category_name']]);
+            CategoryMapping::updateOrCreate(
+                ['account_name' => $state['destination_name']],
+                ['category_id' => $category->id],
+            );
+        }
+
         Notification::make()
             ->success()
             ->title(__('widget.saved'))
