@@ -34,6 +34,7 @@ return [
     'destination' => 'الوجهة',
     'budget' => 'الميزانية',
     'tags' => 'الوسوم',
+    'count' => 'العدد',
     'notes' => 'ملاحظات',
     'update_default_category' => 'تحديث الفئة الافتراضية لهذا المتجر',
     'saved' => 'تم الحفظ',

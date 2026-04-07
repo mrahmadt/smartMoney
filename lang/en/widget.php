@@ -34,6 +34,7 @@ return [
     'destination' => 'Destination',
     'budget' => 'Budget',
     'tags' => 'Tags',
+    'count' => 'Count',
     'notes' => 'Notes',
     'update_default_category' => 'Update default category for this store',
     'saved' => 'Saved',

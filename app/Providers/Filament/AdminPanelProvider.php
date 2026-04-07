@@ -2,33 +2,31 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Dashboard;
+use App\Filament\Widgets\RecentTransactions;
+use App\Filament\Widgets\SpendingCategoriesChart;
+use App\Filament\Widgets\SpendingChart;
+use App\Filament\Widgets\StatsOverview;
+use App\Filament\Widgets\TopCategories;
+use App\Filament\Widgets\TopMerchants;
+use App\Filament\Widgets\TopTransactions;
+use Filament\Auth\MultiFactor\App\AppAuthentication;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Pages\Enums\SubNavigationPosition;
 use Filament\Panel;
 use Filament\PanelProvider;
+// use Filament\Pages\Dashboard;
 use Filament\Support\Colors\Color;
-use Filament\Auth\MultiFactor\App\AppAuthentication;
-use Filament\Widgets\AccountWidget;
-use Filament\Widgets\FilamentInfoWidget;
+use Filament\Support\Enums\Width;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Filament\Support\Enums\Width;
-use Filament\Pages\Enums\SubNavigationPosition;
-// use Filament\Pages\Dashboard;
-use App\Filament\Pages\Dashboard;
-use App\Filament\Widgets\StatsOverview;
-use App\Filament\Widgets\SpendingChart;
-use App\Filament\Widgets\SpendingCategoriesChart;
-use App\Filament\Widgets\TopCategories;
-use App\Filament\Widgets\TopTransactions;
-use App\Filament\Widgets\TopMerchants;
-use App\Filament\Widgets\RecentTransactions;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -43,7 +41,7 @@ class AdminPanelProvider extends PanelProvider
                 providers: [
                     AppAuthentication::make()->recoverable(true),
                 ],
-                isRequired: fn() => auth()->user()?->mfa_required ?? false,
+                isRequired: fn () => auth()->user()?->mfa_required ?? false,
             )
             ->colors([
                 'primary' => Color::Amber,
@@ -60,7 +58,7 @@ class AdminPanelProvider extends PanelProvider
                 TopTransactions::class,
                 // TopMerchants::class,
                 TopCategories::class,
-                // SpendingChart::class,
+                SpendingChart::class,
                 // SpendingCategoriesChart::class,
             ])
             ->middleware([
@@ -84,35 +82,35 @@ class AdminPanelProvider extends PanelProvider
             ->topNavigation(false)
             ->renderHook(
                 'panels::head.end',
-                fn() => '<script src="/js/webpush.js"></script><style>.fi-page-content {row-gap: calc(var(--spacing) * 0.2) !important;} .fi-page-header-main-ctn { padding-top: 1px !important; padding-bottom: 0 !important; }</style>'
+                fn () => '<script src="/js/webpush.js"></script><style>.fi-page-content {row-gap: calc(var(--spacing) * 0.2) !important;} .fi-page-header-main-ctn { padding-top: 1px !important; padding-bottom: 0 !important; }</style>'
             )
-->renderHook(
-    'panels::body.end',
-    function () {
-        $user = auth()->user();
-        if (!$user) {
-            return '';
-        }
-        // Only send once per login session
-        if (session()->get('_iOSLoginSent')) {
-            return '';
-        }
-        session()->put('_iOSLoginSent', true);
+            ->renderHook(
+                'panels::body.end',
+                function () {
+                    $user = auth()->user();
+                    if (! $user) {
+                        return '';
+                    }
+                    // Only send once per login session
+                    if (session()->get('_iOSLoginSent')) {
+                        return '';
+                    }
+                    session()->put('_iOSLoginSent', true);
 
-        $userData = json_encode([
-            'userId' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-        ]);
-        return <<<HTML
+                    $userData = json_encode([
+                        'userId' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                    ]);
+
+                    return <<<HTML
             <script>
             if (navigator.userAgent.includes('iOSApp') && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.userLogin) {
                 window.webkit.messageHandlers.userLogin.postMessage({$userData});
             }
             </script>
         HTML;
-    }
-)
-        ;
+                }
+            );
     }
 }
