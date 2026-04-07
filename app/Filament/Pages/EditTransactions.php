@@ -2,25 +2,26 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Category;
 use App\Services\fireflyIII;
 use Filament\Actions\Action;
-use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TagsInput;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Actions as SchemaActions;
 use Filament\Schemas\Components\Form;
 use Filament\Schemas\Schema;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\TagsInput;
 
 class EditTransactions extends Page implements HasForms
 {
     use InteractsWithForms;
+
     protected static bool $shouldRegisterNavigation = false;
 
     protected string $view = 'filament.pages.edit-transactions';
@@ -30,12 +31,16 @@ class EditTransactions extends Page implements HasForms
     public function getTitle(): string
     {
         app()->setLocale(auth()->user()->language ?? 'en');
+
         return __('menu.edit_transaction');
     }
 
     public string $transactionId;
+
     public $budgets;
+
     public $accounts;
+
     public $categories;
 
     /** @var array<string, mixed> */
@@ -48,7 +53,6 @@ class EditTransactions extends Page implements HasForms
 
         $this->data = $this->fetchTransaction();
 
-        
         $this->form->fill($this->data);
     }
 
@@ -68,11 +72,10 @@ class EditTransactions extends Page implements HasForms
                             'transfer' => __('widget.transfer'),
                             'deposit' => __('widget.deposit'),
                         ])->required(),
-                    TextInput::make('amount')->label(__('widget.amount'))->required()->formatStateUsing(fn($state) => number_format($state, 2, '.', ','))->suffix(fn() => $this->data['currency_code'] ?? ''),
+                    TextInput::make('amount')->label(__('widget.amount'))->required()->formatStateUsing(fn ($state) => number_format($state, 2, '.', ','))->suffix(fn () => $this->data['currency_code'] ?? ''),
 
                     Select::make('source_id')->label(__('widget.account'))->required()
-                        ->options(fn() => $this->accounts),
-
+                        ->options(fn () => $this->accounts),
 
                     TextInput::make('destination_name')->label(__('widget.destination'))->required(),
 
@@ -81,20 +84,22 @@ class EditTransactions extends Page implements HasForms
                         ->seconds(false)->required(),
 
                     Select::make('budget_id')->label(__('widget.budget'))
-                        ->options(fn() => $this->budgets),
+                        ->options(fn () => $this->budgets),
 
                     Select::make('category_name')
                         ->label(__('widget.category'))
-                        ->options(fn() => $this->categories)
-                        ->searchable(),
-                    TagsInput::make('tags')->label(__('widget.tags')),
+                        ->options(fn () => $this->categories)
+                        ->searchable()
+                        ->createOptionUsing(function (string $value): string {
+                            Category::firstOrCreate(['name' => $value]);
 
+                            return $value;
+                        }),
+                    TagsInput::make('tags')->label(__('widget.tags')),
 
                     Textarea::make('notes')
                         ->label(__('widget.notes'))->rows(9)
                         ->extraAttributes(['style' => 'direction: ltr; text-align: left;']),
-
-
 
                 ])
                     ->livewireSubmitHandler('save')
@@ -110,12 +115,11 @@ class EditTransactions extends Page implements HasForms
             ->statePath('data');
     }
 
-
     public function save(): void
     {
         $state = $this->form->getState();
 
-        $firefly = new fireflyIII();
+        $firefly = new fireflyIII;
         $output = $firefly->updateTransaction($this->transactionId, $state);
         Notification::make()
             ->success()
@@ -125,7 +129,7 @@ class EditTransactions extends Page implements HasForms
 
     private function fetchTransaction(): array
     {
-        $firefly = new fireflyIII();
+        $firefly = new fireflyIII;
 
         $transaction = $firefly->getTransaction($this->transactionId);
 
@@ -136,7 +140,7 @@ class EditTransactions extends Page implements HasForms
         $transaction = json_decode(json_encode($transaction), true);
         $budgets = [];
         $budgetsFF = $firefly->getBudgets();
-        if (!empty($budgetsFF)) {
+        if (! empty($budgetsFF)) {
             $budgetsFF = $budgetsFF->data;
             foreach ($budgetsFF as $budgetFF) {
                 $budgets[$budgetFF->id] = $budgetFF->attributes->name;
@@ -144,18 +148,18 @@ class EditTransactions extends Page implements HasForms
         }
         $this->budgets = $budgets;
 
-        $accountsFF = $firefly->getAccounts(type:'asset');
-        if (!empty($accountsFF)) {
+        $accountsFF = $firefly->getAccounts(type: 'asset');
+        if (! empty($accountsFF)) {
             $accountsFF = $accountsFF->data;
             foreach ($accountsFF as $accountFF) {
-                $accounts[$accountFF->id] = $accountFF->attributes->name . ' (' . $accountFF->attributes->currency_code . ')';
+                $accounts[$accountFF->id] = $accountFF->attributes->name.' ('.$accountFF->attributes->currency_code.')';
             }
         }
         $this->accounts = $accounts;
-        $categoriesFF = $firefly->getCategories();
-        $this->categories = !empty($categoriesFF)
-            ? array_combine($categoriesFF, $categoriesFF)
-            : [];
+        $this->categories = Category::all()
+            ->mapWithKeys(fn (Category $c) => [$c->name => $c->translatedName()])
+            ->toArray();
+
         return $transaction;
     }
 }
