@@ -60,6 +60,7 @@ class AdminPanelProvider extends PanelProvider
                 TopCategories::class,
                 SpendingChart::class,
                 // SpendingCategoriesChart::class,
+                // 
             ])
             ->middleware([
                 EncryptCookies::class,
