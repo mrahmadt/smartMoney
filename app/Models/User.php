@@ -19,6 +19,13 @@ class User extends Authenticatable implements HasAppAuthentication, HasAppAuthen
 
     use HasPushSubscriptions;
 
+    public const DEFAULT_DASHBOARD_WIDGETS = [
+        'stats_overview',
+        'recent_transactions',
+        'top_transactions',
+        'top_categories',
+    ];
+
     /**
      * The attributes that are mass assignable.
      *
@@ -31,6 +38,7 @@ class User extends Authenticatable implements HasAppAuthentication, HasAppAuthen
         'budget_id',
         'language',
         'alert_via_email',
+        'dashboard_widgets',
         'mfa_secret',
         'mfa_recovery_codes',
         'mfa_required',
@@ -59,6 +67,7 @@ class User extends Authenticatable implements HasAppAuthentication, HasAppAuthen
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'alert_via_email' => 'boolean',
+            'dashboard_widgets' => 'array',
             'mfa_recovery_codes' => 'array',
             'mfa_required' => 'boolean',
         ];

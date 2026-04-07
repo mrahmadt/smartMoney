@@ -56,11 +56,10 @@ class AdminPanelProvider extends PanelProvider
                 StatsOverview::class,
                 RecentTransactions::class,
                 TopTransactions::class,
-                // TopMerchants::class,
+                TopMerchants::class,
                 TopCategories::class,
                 SpendingChart::class,
-                // SpendingCategoriesChart::class,
-                // 
+                SpendingCategoriesChart::class,
             ])
             ->middleware([
                 EncryptCookies::class,
