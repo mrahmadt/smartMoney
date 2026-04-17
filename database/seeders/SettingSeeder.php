@@ -86,5 +86,9 @@ PROMPT,
         // Alert Batching
         Setting::firstOrCreate(['key' => 'alert_batch_delay'], ['value' => '5', 'description' => 'Seconds to wait before sending batched alert notifications (combines multiple alerts into one)']);
         Setting::firstOrCreate(['key' => 'cleanup_transaction_alerts_days'], ['value' => '5', 'description' => 'Days to keep transaction alerts before automatic cleanup (regardless of read status)']);
+
+        // SMS Flood / Fraud Detection
+        Setting::firstOrCreate(['key' => 'sms_flood_threshold_count'], ['value' => '3', 'description' => 'Alert when this many SMS arrive from the same sender within the time window']);
+        Setting::firstOrCreate(['key' => 'sms_flood_threshold_minutes'], ['value' => '5', 'description' => 'Time window in minutes for SMS flood detection']);
     }
 }

@@ -13,6 +13,8 @@ class AlertEmail extends Notification
     public function __construct(
         public string $title,
         public string $body,
+        public ?string $url = null,
+        public ?string $actionText = null,
     ) {}
 
     public function via(object $notifiable): array
@@ -22,8 +24,17 @@ class AlertEmail extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
-            ->subject($this->title)
-            ->line($this->body);
+        $mail = (new MailMessage)->subject($this->title);
+
+        $lines = array_filter(explode("\n", $this->body), fn ($line) => trim($line) !== '');
+        foreach ($lines as $line) {
+            $mail->line($line);
+        }
+
+        if ($this->url) {
+            $mail->action($this->actionText ?? __('alert.view_details'), $this->url);
+        }
+
+        return $mail;
     }
 }

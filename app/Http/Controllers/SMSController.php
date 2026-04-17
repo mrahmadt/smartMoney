@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Jobs\parseSMSJob;
+use App\Models\Alert;
+use App\Models\Setting;
 use App\Models\SMS;
 use App\Models\SMSSender;
-use App\Models\Setting;
-use App\Jobs\parseSMSJob;
 use App\Models\User;
-use App\Notifications\WebPush;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class SMSController extends Controller
 {
@@ -45,15 +46,19 @@ class SMSController extends Controller
 
         $data = $request->all();
 
-        if (!isset($data['query']['sender']) || !isset($data['query']['message']['text'])) {
+        if (! isset($data['query']['sender']) || ! isset($data['query']['message']['text'])) {
             return response()->json(['filter' => true, 'error' => 'noData'], 200);
         }
 
         $sender = $data['query']['sender'];
-        if (!SMSSender::isValidSender($sender)) {
+        if (! SMSSender::isValidSender($sender)) {
             \Log::debug('SMSController: invalid sender', ['sender' => $sender]);
+
             return response()->json(['filter' => true, 'error' => 'invalidSender'], 200);
         }
+
+        // SMS Flood / Fraud Detection
+        $this->checkSmsFlood($sender);
 
         $message = SMS::removeHiddenChars($data['query']['message']['text']);
 
@@ -65,7 +70,7 @@ class SMSController extends Controller
         $status = SMS::isValidBankTransaction($stripedMessage);
         if ($status == false) {
             if (Setting::getBool('parsesms_store_invalid_sms', false)) {
-                $sms = new SMS();
+                $sms = new SMS;
                 $sms->sender = $sender;
                 $sms->message = $message;
                 $sms->content = $data;
@@ -75,10 +80,11 @@ class SMSController extends Controller
                 $sms->errors = ['reason' => 'invalid SMS'];
                 $sms->save();
             }
+
             return response()->json(['filter' => true, 'error' => 'invalidSMS'], 200);
         }
 
-        $sms = new SMS();
+        $sms = new SMS;
         $sms->sender = strtolower($sender);
         $sms->message = $message;
         $sms->content = $data;
@@ -89,11 +95,52 @@ class SMSController extends Controller
 
         try {
             dispatch(new parseSMSJob($sms));
+
             return response()->json(['filter' => true], 200);
         } catch (\Exception $e) {
             $sms->errors = ['message' => 'processingError'];
             $sms->save();
+
             return response()->json(['filter' => true, 'error' => 'processingError'], 200);
+        }
+    }
+
+    protected function checkSmsFlood(string $sender): void
+    {
+        $threshold = Setting::getInt('sms_flood_threshold_count', 3);
+        $minutes = Setting::getInt('sms_flood_threshold_minutes', 5);
+
+        if ($threshold <= 0 || $minutes <= 0) {
+            return;
+        }
+
+        $cacheKey = 'sms_flood_alerted:'.strtolower($sender);
+        if (Cache::has($cacheKey)) {
+            return;
+        }
+
+        $recentCount = SMS::where('sender', strtolower($sender))
+            ->where('created_at', '>=', now()->subMinutes($minutes))
+            ->count();
+
+        if ($recentCount >= $threshold) {
+            Cache::put($cacheKey, true, now()->addMinutes($minutes));
+
+            $admin = User::find(1);
+            if ($admin) {
+                app()->setLocale($admin->language ?? 'en');
+                Alert::createAlertWithAdminCopy(
+                    title: __('alert.sms_flood_title'),
+                    message: __('alert.sms_flood_message', [
+                        'count' => $recentCount,
+                        'sender' => $sender,
+                        'minutes' => $minutes,
+                    ]),
+                    user_id: $admin,
+                    pin: true,
+                    topic: 'fraud',
+                );
+            }
         }
     }
 }

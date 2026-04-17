@@ -2,15 +2,10 @@
 
 namespace App\Models;
 
+use App\Jobs\SendBatchedNotifications;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\User;
-use App\Models\Setting;
-use App\Notifications\WebPush;
-use App\Notifications\AlertEmail;
-use App\Jobs\SendBatchedNotifications;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Services\fireflyIII;
 
 class Alert extends Model
 {
@@ -27,6 +22,7 @@ class Alert extends Model
         'notified_at',
         'topic',
     ];
+
     protected $casts = [
         'is_read' => 'boolean',
         'is_pinned' => 'boolean',
@@ -57,10 +53,19 @@ class Alert extends Model
         }
         $destination_name = $transaction->destination_name ?? '';
         $source_name = $transaction->source_name ?? '';
-        $category_name = !empty($transaction->category_name) ? ' (' . $transaction->category_name . ') ' : '';
+        $category_name = $transaction->category_name ?? '';
 
-        $title = $type . ' ' . $amount . ' ' . $currency;
-        $message = $title . "\n" . $destination_name . $category_name . "\n" . $source_name;
+        $title = $type.' '.$amount.' '.$currency;
+        $message = $title;
+        if ($destination_name) {
+            $message .= "\n".$destination_name;
+        }
+        if ($category_name) {
+            $message .= "\n".$category_name;
+        }
+        if ($source_name) {
+            $message .= "\n".$source_name;
+        }
 
         Alert::createAlert(
             title: $title,
@@ -68,45 +73,55 @@ class Alert extends Model
             user: $user,
             transaction_journal_id: $transaction->transaction_journal_id ?? null,
             data: [
-                'transaction_id' => $transaction->transaction_journal_id
+                'transaction_id' => $transaction->transaction_journal_id,
             ],
             topic: 'transaction'
         );
     }
-    public static function abnormalTransaction($user_id, $transaction_journal_id, $amount, $average_amount, $difference_percentage){
-                $user = is_numeric($user_id) ? User::find($user_id) : $user_id;
-                if (!$user) return;
-                app()->setLocale($user->language ?? 'en');
 
-                Alert::createAlert(
-                    title: __('alert.abnormal_title'),
-                    message: __('alert.abnormal_message', [
-                        'amount' => number_format($amount, 2, '.', ','),
-                        'average_amount' => number_format($average_amount, 2, '.', ','),
-                        'percentage' => number_format($difference_percentage, 2, '.', ','),
-                    ]),
-                    user: $user,
-                    transaction_journal_id: $transaction_journal_id,
-                    pin: true,
-                    data: [
-                        'amount' => $amount,
-                        'average_amount' => $average_amount,
-                        'difference_percentage' => $difference_percentage
-                    ],
-                    topic: 'abnormal'
-                );
+    public static function abnormalTransaction($user_id, $transaction_journal_id, $amount, $average_amount, $difference_percentage)
+    {
+        $user = is_numeric($user_id) ? User::find($user_id) : $user_id;
+        if (! $user) {
+            return;
+        }
+        app()->setLocale($user->language ?? 'en');
+
+        Alert::createAlert(
+            title: __('alert.abnormal_title'),
+            message: __('alert.abnormal_message', [
+                'amount' => number_format($amount, 2, '.', ','),
+                'average_amount' => number_format($average_amount, 2, '.', ','),
+                'percentage' => number_format($difference_percentage, 2, '.', ','),
+            ]),
+            user: $user,
+            transaction_journal_id: $transaction_journal_id,
+            pin: true,
+            data: [
+                'amount' => $amount,
+                'average_amount' => $average_amount,
+                'difference_percentage' => $difference_percentage,
+            ],
+            topic: 'abnormal'
+        );
     }
 
     public static function createAlert($title, $message, $user, $transaction_journal_id = null, $data = [], $pin = false, $topic = null)
     {
-        $alert = new Alert();
+        $alert = new Alert;
         $alert->title = $title;
         $alert->transaction_journal_id = $transaction_journal_id;
         $alert->user_id = $user->id;
         $alert->message = $message;
-        if ($data) $alert->data = $data;
-        if ($pin) $alert->is_pinned = true;
-        if ($topic) $alert->topic = $topic;
+        if ($data) {
+            $alert->data = $data;
+        }
+        if ($pin) {
+            $alert->is_pinned = true;
+        }
+        if ($topic) {
+            $alert->topic = $topic;
+        }
         $alert->save();
 
         $delay = (int) Setting::get('alert_batch_delay', 5);
@@ -125,10 +140,12 @@ class Alert extends Model
         $user = is_numeric($user_id) ? User::find($user_id) : $user_id;
         $userId = $user ? $user->id : 1;
 
-        if (!$user) {
+        if (! $user) {
             $user = User::find(1);
         }
-        if (!$user) return;
+        if (! $user) {
+            return;
+        }
 
         app()->setLocale($user->language ?? 'en');
         self::createAlert($title, $message, $user, $transaction_journal_id, $data, $pin, $topic);

@@ -63,7 +63,11 @@ class SendBatchedNotifications implements ShouldQueue
         $tag = 'alert-batch-'.$this->userId.'-'.now()->timestamp;
         $user->notify(new WebPush($title, $webPushBody, $url, $tag));
         if ($user->alert_via_email) {
-            $user->notify(new AlertEmail($title, $emailBody));
+            $absoluteUrl = url($url);
+            $actionText = $alerts->count() === 1 && $alerts->first()->transaction_journal_id
+                ? __('alert.view_transaction')
+                : __('alert.view_alerts');
+            $user->notify(new AlertEmail($title, $emailBody, $absoluteUrl, $actionText));
         }
 
         // Send to iOS devices via APNs (if configured)
@@ -74,6 +78,13 @@ class SendBatchedNotifications implements ShouldQueue
     {
         $tokens = $user->routeNotificationForApn();
         if (empty($tokens)) {
+            return;
+        }
+
+        $keyPath = config('broadcasting.apn.private_key_path', storage_path('app/apns/AuthKey.p8'));
+        if (! file_exists($keyPath)) {
+            \Log::warning('APNs key file not found, skipping push', ['path' => $keyPath]);
+
             return;
         }
 
