@@ -30,12 +30,17 @@ class parseSMSJob implements ShouldQueue
 
     protected $SMS_sender;
 
+    public bool $dryRun = false;
+
+    public array $dryRunOutput = [];
+
     /**
      * Create a new job instance.
      */
-    public function __construct($sms)
+    public function __construct($sms, bool $dryRun = false)
     {
         $this->sms = $sms;
+        $this->dryRun = $dryRun;
     }
 
     /**
@@ -47,7 +52,10 @@ class parseSMSJob implements ShouldQueue
 
         $SMS_sender = SMSSender::where('is_active', true)->where('sender', $this->sms->sender)->first();
         if (! $SMS_sender) {
-            SMS::processInvalidSMS(sms: $this->sms, errors: 'No active sender found for this SMS', keep: true);
+            $this->dryRunLog('error', 'No active sender found for this SMS');
+            if (! $this->dryRun) {
+                SMS::processInvalidSMS(sms: $this->sms, errors: 'No active sender found for this SMS', keep: true);
+            }
 
             return;
         }
@@ -56,14 +64,21 @@ class parseSMSJob implements ShouldQueue
         $isValid = SMS::isValidBankTransaction(message: $this->sms->message, cleanSMS: false);
 
         if (! $isValid) {
-            SMS::processInvalidSMS(sms: $this->sms, errors: 'Not a valid bank transaction');
+            $this->dryRunLog('error', 'Not a valid bank transaction');
+            if (! $this->dryRun) {
+                SMS::processInvalidSMS(sms: $this->sms, errors: 'Not a valid bank transaction');
+            }
 
             return;
         }
+        $this->dryRunLog('info', 'SMS is a valid bank transaction');
 
         $SMSRegularExp = SMSRegularExp::findInvalidRegExp(sender_id: $this->SMS_sender->id, message: $this->sms->message);
         if ($SMSRegularExp) {
-            SMS::processInvalidSMS(sms: $this->sms, errors: 'Invalid Transaction - regex matched id:'.$SMSRegularExp['id'], keep: true);
+            $this->dryRunLog('error', 'Invalid Transaction - regex matched id:'.$SMSRegularExp['id']);
+            if (! $this->dryRun) {
+                SMS::processInvalidSMS(sms: $this->sms, errors: 'Invalid Transaction - regex matched id:'.$SMSRegularExp['id'], keep: true);
+            }
 
             return;
         }
@@ -78,6 +93,7 @@ class parseSMSJob implements ShouldQueue
 
         $newTransaction = false;
         if ($SMSRegularExp) {
+            $this->dryRunLog('info', 'Matched regex id: '.$SMSRegularExp['id'], ['transactionType' => $SMSRegularExp['transactionType'], 'matches' => $SMSRegularExp['matches']]);
             // $detectedCategory = ParseSMS::detectCategory(message: $this->sms->message, transactionType: $SMSRegularExp['transactionType'], matches: $SMSRegularExp['matches'], categories: $categories);
             $detectedCategory = ParseSMS::detectCategory(message: $this->sms->message, transactionType: $SMSRegularExp['transactionType'], matches: $SMSRegularExp['matches']);
             $transaction['type'] = $SMSRegularExp['transactionType'];
@@ -114,22 +130,32 @@ class parseSMSJob implements ShouldQueue
             try {
                 $output = ParseSMS::parseSMSviaLLM($this->sms->message);
                 if ($output === false) {
-                    SMS::processInvalidSMS(sms: $this->sms, errors: 'LLM returned invalid JSON output', keep: true);
+                    $this->dryRunLog('error', 'LLM returned invalid JSON output');
+                    if (! $this->dryRun) {
+                        SMS::processInvalidSMS(sms: $this->sms, errors: 'LLM returned invalid JSON output', keep: true);
+                    }
 
                     return;
                 }
 
                 if (isset($output['error']) && $output['error'] !== '') {
-                    SMS::processInvalidSMS(sms: $this->sms, message: 'LLM error', errors: 'LLM error: '.$output['error'], keep: true);
+                    $this->dryRunLog('error', 'LLM error: '.$output['error']);
+                    if (! $this->dryRun) {
+                        SMS::processInvalidSMS(sms: $this->sms, message: 'LLM error', errors: 'LLM error: '.$output['error'], keep: true);
+                    }
 
                     return;
                 }
                 if (! isset($output['transactionType']) || ! in_array($output['transactionType'], ['withdrawal', 'deposit', 'payment', 'transfer'])) {
-                    SMS::processInvalidSMS(sms: $this->sms, errors: 'Invalid Transaction Type: '.($output['transactionType'] ?? 'null'), keep: true);
+                    $this->dryRunLog('error', 'Invalid Transaction Type: '.($output['transactionType'] ?? 'null'));
+                    if (! $this->dryRun) {
+                        SMS::processInvalidSMS(sms: $this->sms, errors: 'Invalid Transaction Type: '.($output['transactionType'] ?? 'null'), keep: true);
+                    }
 
                     return;
                 }
-                if (Setting::getBool('parsesms_regex_enabled', true)) {
+                $this->dryRunLog('info', 'LLM parsed successfully', $output);
+                if (Setting::getBool('parsesms_regex_enabled', true) && ! $this->dryRun) {
                     try {
                         $generatedRegex = ParseSMS::generateRegex($this->sms->message, $output);
                         if ($generatedRegex) {
@@ -167,18 +193,37 @@ class parseSMSJob implements ShouldQueue
                 $transaction['tags'] = ['by AI'];
                 $newTransaction = true;
             } catch (\Exception $e) {
-                SMS::processInvalidSMS(sms: $this->sms, message: 'Internal Error (generateDescription)', errors: 'Internal Error: '.$e->getMessage(), keep: true);
+                $this->dryRunLog('error', 'Internal Error: '.$e->getMessage());
+                if (! $this->dryRun) {
+                    SMS::processInvalidSMS(sms: $this->sms, message: 'Internal Error (generateDescription)', errors: 'Internal Error: '.$e->getMessage(), keep: true);
+                }
 
                 return;
             }
         }
         if (! $newTransaction) {
-            SMS::processInvalidSMS(sms: $this->sms, errors: 'No regex matched and AI fallback is disabled or failed', keep: true);
+            $this->dryRunLog('error', 'No regex matched and AI fallback is disabled or failed');
+            if (! $this->dryRun) {
+                SMS::processInvalidSMS(sms: $this->sms, errors: 'No regex matched and AI fallback is disabled or failed', keep: true);
+            }
 
             return;
         }
+
+        $this->dryRunLog('transaction', 'Parsed transaction data', $transaction);
+
         $transactionModel = new Transaction;
-        $status = $transactionModel->createTransaction($transaction, $this->SMS_sender);
+        $status = $transactionModel->createTransaction($transaction, $this->SMS_sender, $this->dryRun);
+
+        if ($this->dryRun) {
+            if ($status['success']) {
+                $this->dryRunLog('transaction', 'Firefly III transaction payload', $status['transaction'] ?? []);
+            } else {
+                $this->dryRunLog('error', 'Validation failed: '.($status['error'] ?? 'Unknown'));
+            }
+
+            return;
+        }
 
         \Log::debug('Transaction creation status', ['status' => $status, 'transaction' => $transaction]);
         if ($status['success']) {
@@ -300,5 +345,10 @@ class parseSMSJob implements ShouldQueue
 
             return;
         }
+    }
+
+    protected function dryRunLog(string $type, string $message, array $data = []): void
+    {
+        $this->dryRunOutput[] = compact('type', 'message', 'data');
     }
 }

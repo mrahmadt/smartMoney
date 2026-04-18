@@ -2,16 +2,17 @@
 
 namespace App\Filament\Resources\SMS\Tables;
 
+use App\Jobs\parseSMSJob;
+use App\Models\SMS;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\Action;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
-use App\Jobs\parseSMSJob;
 
 class SMSTable
 {
@@ -21,12 +22,18 @@ class SMSTable
             ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('sender')
-                                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->searchable(),
                 TextColumn::make('message')
-                    // ->limit(50)
                     ->wrap()
-                    ->searchable(),
+                    ->searchable()
+                    ->extraCellAttributes(function ($record) {
+                        if (preg_match('/[\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}\x{FB50}-\x{FDFF}\x{FE70}-\x{FEFF}\x{0590}-\x{05FF}]/u', $record->message)) {
+                            return ['style' => 'direction: rtl; text-align: right;'];
+                        }
+
+                        return [];
+                    }),
                 IconColumn::make('is_valid')
                     ->boolean(),
                 IconColumn::make('is_processed')
@@ -46,14 +53,14 @@ class SMSTable
                 TernaryFilter::make('is_processed')
                     ->label('Processed'),
                 SelectFilter::make('sender')
-                    ->options(fn () => \App\Models\SMS::query()->distinct()->pluck('sender', 'sender')->toArray()),
+                    ->options(fn () => SMS::query()->distinct()->pluck('sender', 'sender')->toArray()),
             ])
             ->recordActions([
                 Action::make('reprocess')
                     ->label('Process')
                     ->icon('heroicon-o-arrow-path')
                     ->color('warning')
-                    ->visible(fn ($record) => !$record->is_valid && $record->is_processed)
+                    ->visible(fn ($record) => ! $record->is_valid && $record->is_processed)
                     ->requiresConfirmation()
                     ->action(function ($record) {
                         $record->update(['is_valid' => true, 'is_processed' => false, 'errors' => null]);

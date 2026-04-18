@@ -18,7 +18,7 @@ class Transaction extends Model
 
     protected $SMS_sender;
 
-    public function createTransaction($transaction, $SMS_sender)
+    public function createTransaction($transaction, $SMS_sender, bool $dryRun = false)
     {
         $this->fireflyIII = new fireflyIII;
         $this->SMS_sender = $SMS_sender;
@@ -157,8 +157,6 @@ class Transaction extends Model
             $transaction['tags'][] = 'shortcode:sender_fallback';
         }
 
-        $transaction['source_id'] = $myaccount->firefly_account_id;
-
         $budgetId = $myaccount->getBudgetForShortcode($transaction['MyAccountNumber']);
         if ($budgetId) {
             $transaction['budget_id'] = $budgetId;
@@ -222,7 +220,31 @@ class Transaction extends Model
             $transaction['amount'] = $amount;
         }
 
-        $transaction['destination_name'] = $transaction['OtherAccountName'] ?? $transaction['OtherAccountNumber'] ?? 'Unknown';
+        $otherName = $transaction['OtherAccountName'] ?? $transaction['OtherAccountNumber'] ?? 'Unknown';
+
+        if ($transaction['type'] === 'deposit') {
+            // Deposit: source = other party (revenue), destination = my asset account
+            $transaction['destination_id'] = $myaccount->firefly_account_id;
+            $transaction['source_name'] = $otherName;
+        } elseif ($transaction['type'] === 'transfer') {
+            // Transfer: source = my account, destination = resolved other account
+            $transaction['source_id'] = $myaccount->firefly_account_id;
+
+            $otherAccountResult = Account::findBySenderAndShortcode(
+                senderName: $this->SMS_sender->sender,
+                shortcode: $transaction['OtherAccountNumber']
+            );
+
+            if ($otherAccountResult) {
+                $transaction['destination_id'] = $otherAccountResult['account']->firefly_account_id;
+            } else {
+                $transaction['destination_name'] = $otherName;
+            }
+        } else {
+            // Withdrawal: source = my asset account, destination = other party (expense)
+            $transaction['source_id'] = $myaccount->firefly_account_id;
+            $transaction['destination_name'] = $otherName;
+        }
 
         $transaction['tags'][] = $transaction['MyAccountNumber'];
         unset($transaction['currency']);
@@ -232,6 +254,13 @@ class Transaction extends Model
         unset($transaction['OtherAccountNumber']);
         if (! $transaction['tags']) {
             unset($transaction['tags']);
+        }
+
+        if ($dryRun) {
+            $output['success'] = true;
+            $output['transaction'] = $transaction;
+
+            return $output;
         }
 
         $result = $this->fireflyIII->newTransaction($transaction);
