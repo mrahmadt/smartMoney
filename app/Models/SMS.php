@@ -8,11 +8,14 @@ use Illuminate\Database\Eloquent\Model;
 class SMS extends Model
 {
     use HasFactory;
+
     protected $table = 'smses';
+
     protected $fillable = [
         'sender',
         'message',
         'message_hash',
+        'transaction_id',
         'content',
         'is_valid',
         'is_processed',
@@ -21,7 +24,7 @@ class SMS extends Model
 
     public static function generateHash($sender, $message): string
     {
-        return md5(strtolower($sender) . $message);
+        return md5(strtolower($sender).$message);
     }
 
     public static function isDuplicate($sender, $message): bool
@@ -106,7 +109,7 @@ class SMS extends Model
         }
 
         // No numbers
-        if (!preg_match('~[0-9]+~', $message)) {
+        if (! preg_match('~[0-9]+~', $message)) {
             return false;
         }
 
@@ -126,7 +129,6 @@ class SMS extends Model
                 return false;
             }
         }
-
 
         // if(config('parseSMS.auto_detect_non_transaction_sms')){
         //     // ignore if only one number
@@ -159,7 +161,7 @@ class SMS extends Model
             $sms->is_valid = false;
             $sms->is_processed = true;
             if ($errors) {
-                if (!is_array($errors)) {
+                if (! is_array($errors)) {
                     $errors = ['reason' => $errors];
                 }
                 $sms->errors = $errors;
@@ -181,7 +183,7 @@ class SMS extends Model
                     topic: 'Invalid SMS',
                     data: [
                         'sms_id' => $sms->id,
-                        'errors' => ($errors ? json_encode($errors) : 'Unknown')
+                        'errors' => ($errors ? json_encode($errors) : 'Unknown'),
                     ]
                 );
             }

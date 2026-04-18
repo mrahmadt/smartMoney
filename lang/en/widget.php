@@ -31,6 +31,7 @@ return [
     'transfer' => 'Transfer',
     'deposit' => 'Deposit',
     'account' => 'Account',
+    'source' => 'Source',
     'destination' => 'Destination',
     'budget' => 'Budget',
     'tags' => 'Tags',

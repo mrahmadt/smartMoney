@@ -31,6 +31,7 @@ return [
     'transfer' => 'تحويل',
     'deposit' => 'إيداع',
     'account' => 'الحساب',
+    'source' => 'المصدر',
     'destination' => 'الوجهة',
     'budget' => 'الميزانية',
     'tags' => 'الوسوم',

@@ -2,29 +2,32 @@
 
 namespace App\Jobs;
 
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
-use App\Services\fireflyIII;
-use App\Models\SMSRegularExp;
-use App\Models\SMS;
-use App\Models\ParseSMS;
-use App\Models\Transaction;
-use App\Models\SMSSender;
 use App\Models\Account;
 use App\Models\Alert;
-use App\Models\User;
-use App\Models\Setting;
 use App\Models\CategoryMapping;
+use App\Models\CurrencyMap;
+use App\Models\ParseSMS;
 use App\Models\PendingCategoryReview;
+use App\Models\Setting;
+use App\Models\SMS;
+use App\Models\SMSRegularExp;
+use App\Models\SMSSender;
+use App\Models\Transaction;
+use App\Models\User;
+use App\Services\fireflyIII;
+use App\Services\TransactionCache;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Queue\Queueable;
 
 class parseSMSJob implements ShouldQueue
 {
     use Queueable;
 
     protected $sms;
+
     protected $fireflyIII;
+
     protected $SMS_sender;
 
     /**
@@ -40,27 +43,28 @@ class parseSMSJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $this->fireflyIII = new fireflyIII();
+        $this->fireflyIII = new fireflyIII;
 
         $SMS_sender = SMSSender::where('is_active', true)->where('sender', $this->sms->sender)->first();
-        if (!$SMS_sender) {
+        if (! $SMS_sender) {
             SMS::processInvalidSMS(sms: $this->sms, errors: 'No active sender found for this SMS', keep: true);
+
             return;
         }
         $this->SMS_sender = $SMS_sender;
 
-
         $isValid = SMS::isValidBankTransaction(message: $this->sms->message, cleanSMS: false);
 
-        if (!$isValid) {
+        if (! $isValid) {
             SMS::processInvalidSMS(sms: $this->sms, errors: 'Not a valid bank transaction');
+
             return;
         }
 
-
         $SMSRegularExp = SMSRegularExp::findInvalidRegExp(sender_id: $this->SMS_sender->id, message: $this->sms->message);
         if ($SMSRegularExp) {
-            SMS::processInvalidSMS(sms: $this->sms, errors: 'Invalid Transaction - regex matched id:' . $SMSRegularExp['id'], keep: true);
+            SMS::processInvalidSMS(sms: $this->sms, errors: 'Invalid Transaction - regex matched id:'.$SMSRegularExp['id'], keep: true);
+
             return;
         }
 
@@ -71,7 +75,6 @@ class parseSMSJob implements ShouldQueue
         }
         $transaction = [];
         $sms_date = $this->sms->content['query']['date'] ?? null;
-
 
         $newTransaction = false;
         if ($SMSRegularExp) {
@@ -94,8 +97,8 @@ class parseSMSJob implements ShouldQueue
 
             // Normalize currency fields through CurrencyMap
             foreach (['currency', 'feesCurrency', 'totalAmountCurrency'] as $currencyField) {
-                if (!empty($transaction[$currencyField])) {
-                    $resolved = \App\Models\CurrencyMap::resolve($transaction[$currencyField]);
+                if (! empty($transaction[$currencyField])) {
+                    $resolved = CurrencyMap::resolve($transaction[$currencyField]);
                     if ($resolved) {
                         $transaction[$currencyField] = $resolved;
                     }
@@ -104,23 +107,26 @@ class parseSMSJob implements ShouldQueue
 
             $transaction['category_name'] = $detectedCategory['category'] ?? null;
             $transaction['description'] = Transaction::generateDescription($this->sms->message);
-            $transaction['notes'] = $this->SMS_sender->sender . "\n" . $this->sms->message;
-            $transaction['tags'] = ['regex:' . $SMSRegularExp['id']];
+            $transaction['notes'] = $this->SMS_sender->sender."\n".$this->sms->message;
+            $transaction['tags'] = ['regex:'.$SMSRegularExp['id']];
             $newTransaction = true;
         } elseif (Setting::getBool('parsesms_failback_ai', false)) { // Not found. now we need LLM support
             try {
                 $output = ParseSMS::parseSMSviaLLM($this->sms->message);
                 if ($output === false) {
                     SMS::processInvalidSMS(sms: $this->sms, errors: 'LLM returned invalid JSON output', keep: true);
+
                     return;
                 }
 
                 if (isset($output['error']) && $output['error'] !== '') {
-                    SMS::processInvalidSMS(sms: $this->sms, message: 'LLM error', errors: 'LLM error: ' . $output['error'], keep: true);
+                    SMS::processInvalidSMS(sms: $this->sms, message: 'LLM error', errors: 'LLM error: '.$output['error'], keep: true);
+
                     return;
                 }
-                if (!isset($output['transactionType']) || !in_array($output['transactionType'], ['withdrawal', 'deposit', 'payment', 'transfer'])) {
-                    SMS::processInvalidSMS(sms: $this->sms, errors: 'Invalid Transaction Type: ' . ($output['transactionType'] ?? 'null'), keep: true);
+                if (! isset($output['transactionType']) || ! in_array($output['transactionType'], ['withdrawal', 'deposit', 'payment', 'transfer'])) {
+                    SMS::processInvalidSMS(sms: $this->sms, errors: 'Invalid Transaction Type: '.($output['transactionType'] ?? 'null'), keep: true);
+
                     return;
                 }
                 if (Setting::getBool('parsesms_regex_enabled', true)) {
@@ -157,34 +163,39 @@ class parseSMSJob implements ShouldQueue
                 $detectedCategory = ParseSMS::detectCategory(message: $this->sms->message, transactionType: $output['transactionType'], matches: $output);
                 $transaction['category_name'] = $detectedCategory['category'] ?? null;
                 $transaction['description'] = Transaction::generateDescription($this->sms->message);
-                $transaction['notes'] = $this->SMS_sender->sender . "\n" . $this->sms->message;
+                $transaction['notes'] = $this->SMS_sender->sender."\n".$this->sms->message;
                 $transaction['tags'] = ['by AI'];
                 $newTransaction = true;
             } catch (\Exception $e) {
-                SMS::processInvalidSMS(sms: $this->sms, message: 'Internal Error (generateDescription)', errors: 'Internal Error: ' . $e->getMessage(), keep: true);
+                SMS::processInvalidSMS(sms: $this->sms, message: 'Internal Error (generateDescription)', errors: 'Internal Error: '.$e->getMessage(), keep: true);
+
                 return;
             }
         }
-        if (!$newTransaction) {
+        if (! $newTransaction) {
             SMS::processInvalidSMS(sms: $this->sms, errors: 'No regex matched and AI fallback is disabled or failed', keep: true);
+
             return;
         }
-        $transactionModel = new Transaction();
+        $transactionModel = new Transaction;
         $status = $transactionModel->createTransaction($transaction, $this->SMS_sender);
 
         \Log::debug('Transaction creation status', ['status' => $status, 'transaction' => $transaction]);
         if ($status['success']) {
-            print('Transaction created successfully with ID: ' . $status['transaction_id']);
-            $this->sms->update(['is_processed' => true]);
+            echo 'Transaction created successfully with ID: '.$status['transaction_id'];
+            $this->sms->update([
+                'is_processed' => true,
+                'transaction_id' => $status['transaction_id'],
+            ]);
 
             $localAccount = Account::where('firefly_account_id', $status['attributes']->source_id)->first();
             $user_id = $localAccount?->user_id ?? 1;
             $user = User::find($user_id);
 
             // Clear dashboard transaction cache for affected users
-            \App\Services\TransactionCache::clear($user_id);
+            TransactionCache::clear($user_id);
             if ($user_id !== 1) {
-                \App\Services\TransactionCache::clear(1);
+                TransactionCache::clear(1);
             }
 
             Alert::newTransaction(transaction: $status['attributes'], user: $user);
@@ -224,7 +235,6 @@ class parseSMSJob implements ShouldQueue
             // $type = $status['attributes']->type ?? ($transaction['type'] ?? null);
 
             // $abnormal_threshold_percentage = 0;
-
 
             // Real-time check: Destination amount abnormal
             // This is 40x your normal spend at Aldrewes. Amount: 30,000, Average: 750
@@ -286,7 +296,8 @@ class parseSMSJob implements ShouldQueue
                 }
             }
         } else {
-            SMS::processInvalidSMS(sms: $this->sms, message: 'Failed to create transaction',  errors: 'Failed to create transaction: ' . $status['error'] . ' ' . print_r($transaction, true), keep: true);
+            SMS::processInvalidSMS(sms: $this->sms, message: 'Failed to create transaction', errors: 'Failed to create transaction: '.$status['error'].' '.print_r($transaction, true), keep: true);
+
             return;
         }
     }
