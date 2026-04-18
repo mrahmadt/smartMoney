@@ -222,23 +222,46 @@ class Transaction extends Model
 
         $otherName = $transaction['OtherAccountName'] ?? $transaction['OtherAccountNumber'] ?? 'Unknown';
 
+        // Auto-detect transfer: if OtherAccountNumber matches a known account, promote to transfer
+        $autoTransferDirection = null;
+        if (in_array($transaction['type'], ['deposit', 'withdrawal']) && ! empty($transaction['OtherAccountNumber'])) {
+            $otherAccountCheck = Account::findBySenderAndShortcode(
+                senderName: $this->SMS_sender->sender,
+                shortcode: $transaction['OtherAccountNumber']
+            );
+            if ($otherAccountCheck) {
+                $autoTransferDirection = $transaction['type'] === 'deposit' ? 'incoming' : 'outgoing';
+                $transaction['type'] = 'transfer';
+                Log::debug('Auto-promoted to transfer', ['direction' => $autoTransferDirection, 'OtherAccountNumber' => $transaction['OtherAccountNumber']]);
+            }
+        }
+
         if ($transaction['type'] === 'deposit') {
             // Deposit: source = other party (revenue), destination = my asset account
             $transaction['destination_id'] = $myaccount->firefly_account_id;
             $transaction['source_name'] = $otherName;
         } elseif ($transaction['type'] === 'transfer') {
-            // Transfer: source = my account, destination = resolved other account
-            $transaction['source_id'] = $myaccount->firefly_account_id;
-
             $otherAccountResult = Account::findBySenderAndShortcode(
                 senderName: $this->SMS_sender->sender,
                 shortcode: $transaction['OtherAccountNumber']
             );
 
-            if ($otherAccountResult) {
-                $transaction['destination_id'] = $otherAccountResult['account']->firefly_account_id;
+            if ($autoTransferDirection === 'incoming') {
+                // Incoming transfer: source = other account, destination = my account
+                $transaction['destination_id'] = $myaccount->firefly_account_id;
+                if ($otherAccountResult) {
+                    $transaction['source_id'] = $otherAccountResult['account']->firefly_account_id;
+                } else {
+                    $transaction['source_name'] = $otherName;
+                }
             } else {
-                $transaction['destination_name'] = $otherName;
+                // Outgoing transfer: source = my account, destination = other account
+                $transaction['source_id'] = $myaccount->firefly_account_id;
+                if ($otherAccountResult) {
+                    $transaction['destination_id'] = $otherAccountResult['account']->firefly_account_id;
+                } else {
+                    $transaction['destination_name'] = $otherName;
+                }
             }
         } else {
             // Withdrawal: source = my asset account, destination = other party (expense)
