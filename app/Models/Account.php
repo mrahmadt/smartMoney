@@ -165,22 +165,29 @@ class Account extends Model
             Log::debug('Attempting to guess account by matching shortcode against IBAN/account_number suffix', ['sender' => $senderName, 'shortcode' => $shortcode]);
             $cleanShortcode = preg_replace('/[^0-9]/', '', $shortcode);
             Log::debug('Cleaned shortcode for matching', ['cleanShortcode' => $cleanShortcode]);
+
             if (strlen($cleanShortcode) >= 3) {
-                foreach ($all as $account) {
-                    if ($account->sender_id !== $sender->id) {
-                        continue;
-                    }
-                    $cleanIban = $account->iban ? preg_replace('/[\s\-]/', '', $account->iban) : null;
-                    $cleanAccountNumber = $account->account_number ? preg_replace('/[\s\-]/', '', $account->account_number) : null;
-                    Log::debug('Cleaned IBAN and account number for matching', ['cleanIban' => $cleanIban, 'cleanAccountNumber' => $cleanAccountNumber]);
-                    if ($cleanIban && str_ends_with($cleanIban, $cleanShortcode)) {
-                        return ['account' => $account, 'match' => 'guess'];
-                    }
-                    if ($cleanAccountNumber && str_ends_with($cleanAccountNumber, $cleanShortcode)) {
-                        return ['account' => $account, 'match' => 'guess'];
+                foreach ([true,false] as $method){
+                    foreach ($all as $account) {
+                        if($method == true){
+                            if ($account->sender_id !== $sender->id) {
+                                continue;
+                            }
+                        }
+                        $cleanIban = $account->iban ? preg_replace('/[\s\-]/', '', $account->iban) : null;
+                        $cleanAccountNumber = $account->account_number ? preg_replace('/[\s\-]/', '', $account->account_number) : null;
+                        Log::debug('Cleaned IBAN and account number for matching', ['cleanIban' => $cleanIban, 'cleanAccountNumber' => $cleanAccountNumber]);
+                        if ($cleanIban && str_ends_with($cleanIban, $cleanShortcode)) {
+                            return ['account' => $account, 'match' => 'guess'];
+                        }
+                        if ($cleanAccountNumber && str_ends_with($cleanAccountNumber, $cleanShortcode)) {
+                            return ['account' => $account, 'match' => 'guess'];
+                        }
                     }
                 }
+
             }
+
         }
 
         // Priority 4: sender match only (no shortcode match) — last resort
