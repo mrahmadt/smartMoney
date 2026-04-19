@@ -2,11 +2,10 @@
 
 namespace App\Models;
 
+use App\Services\fireflyIII;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
-use App\Services\fireflyIII;
-use App\Models\Setting;
 use Illuminate\Support\Facades\Log;
 
 class Account extends Model
@@ -58,7 +57,7 @@ class Account extends Model
             ->pluck('firefly_account_id')
             ->toArray();
 
-        return !empty($accountIds) ? ['source_id' => $accountIds] : [];
+        return ! empty($accountIds) ? ['source_id' => $accountIds] : [];
     }
 
     /**
@@ -67,7 +66,7 @@ class Account extends Model
      */
     public static function syncFromFirefly(): array
     {
-        $firefly = new fireflyIII();
+        $firefly = new fireflyIII;
         $remoteIds = [];
         $created = 0;
         $updated = 0;
@@ -76,7 +75,9 @@ class Account extends Model
         $totalPages = 1;
         for ($page = 1; $page <= $totalPages; $page++) {
             $response = $firefly->getAccounts('asset');
-            if (!$response || !isset($response->data)) break;
+            if (! $response || ! isset($response->data)) {
+                break;
+            }
 
             if ($page === 1 && isset($response->meta->pagination->total_pages)) {
                 $totalPages = $response->meta->pagination->total_pages;
@@ -102,7 +103,7 @@ class Account extends Model
                     if ($local->account_number !== ($remoteAccount->attributes->account_number ?? null)) {
                         $changes['account_number'] = $remoteAccount->attributes->account_number ?? null;
                     }
-                    if (!empty($changes)) {
+                    if (! empty($changes)) {
                         $local->update($changes);
                         $updated++;
                     }
@@ -128,14 +129,18 @@ class Account extends Model
 
     /**
      * Find account by SMS sender name and shortcode.
+     *
      * Priority 1: sender + shortcode match
      * Priority 2: no sender set + shortcode match
-     * Priority 3: guess by matching shortcode against IBAN/account_number suffix (if enabled)
+     * Priority 3: guess by matching shortcode against IBAN/account_number suffix
+     *             - gated by `account_guess_by_shortcode` setting
+     *             - OR forced on by passing $alwaysGuessByIban=true (used for the "other side"
+     *               of a transfer, where the account belongs to a different sender)
      * Priority 4: sender match only (no shortcode match) — last resort (if enabled)
      *
      * @return array{account: static, match: string}|null
      */
-    public static function findBySenderAndShortcode(string $senderName, string $shortcode): ?array
+    public static function findBySenderAndShortcode(string $senderName, string $shortcode, bool $alwaysGuessByIban = false): ?array
     {
         $senderName = strtolower($senderName);
 
@@ -161,22 +166,28 @@ class Account extends Model
         }
 
         // Priority 3: guess by matching shortcode against IBAN or account_number suffix
-        if ($sender && Setting::getBool('account_guess_by_shortcode', false)) {
-            Log::debug('Attempting to guess account by matching shortcode against IBAN/account_number suffix', ['sender' => $senderName, 'shortcode' => $shortcode]);
+        $guessEnabled = $alwaysGuessByIban || Setting::getBool('account_guess_by_shortcode', false);
+        if ($guessEnabled) {
+            Log::debug('Attempting to guess account by matching shortcode against IBAN/account_number suffix', [
+                'sender' => $senderName,
+                'shortcode' => $shortcode,
+                'forced' => $alwaysGuessByIban,
+            ]);
             $cleanShortcode = preg_replace('/[^0-9]/', '', $shortcode);
-            Log::debug('Cleaned shortcode for matching', ['cleanShortcode' => $cleanShortcode]);
 
             if (strlen($cleanShortcode) >= 3) {
-                foreach ([true,false] as $method){
+                // Pass 1: prefer accounts owned by the same sender (only if we have one)
+                // Pass 2: any account, regardless of sender
+                foreach ([true, false] as $restrictToSender) {
+                    if ($restrictToSender && ! $sender) {
+                        continue;
+                    }
                     foreach ($all as $account) {
-                        if($method == true){
-                            if ($account->sender_id !== $sender->id) {
-                                continue;
-                            }
+                        if ($restrictToSender && $account->sender_id !== $sender->id) {
+                            continue;
                         }
                         $cleanIban = $account->iban ? preg_replace('/[\s\-]/', '', $account->iban) : null;
                         $cleanAccountNumber = $account->account_number ? preg_replace('/[\s\-]/', '', $account->account_number) : null;
-                        Log::debug('Cleaned IBAN and account number for matching', ['cleanIban' => $cleanIban, 'cleanAccountNumber' => $cleanAccountNumber]);
                         if ($cleanIban && str_ends_with($cleanIban, $cleanShortcode)) {
                             return ['account' => $account, 'match' => 'guess'];
                         }
@@ -185,9 +196,7 @@ class Account extends Model
                         }
                     }
                 }
-
             }
-
         }
 
         // Priority 4: sender match only (no shortcode match) — last resort
@@ -208,7 +217,7 @@ class Account extends Model
      */
     public function hasShortcode(string $shortcode): bool
     {
-        if (!is_array($this->shortcodes)) {
+        if (! is_array($this->shortcodes)) {
             return false;
         }
 
@@ -233,7 +242,7 @@ class Account extends Model
         if (is_array($this->shortcodes)) {
             foreach ($this->shortcodes as $entry) {
                 if (is_array($entry) && ($entry['shortcode'] ?? null) === $shortcode) {
-                    if (!empty($entry['budget_id'])) {
+                    if (! empty($entry['budget_id'])) {
                         return (int) $entry['budget_id'];
                     }
                     break;
@@ -249,12 +258,13 @@ class Account extends Model
      */
     public function getShortcodeList(): array
     {
-        if (!is_array($this->shortcodes)) {
+        if (! is_array($this->shortcodes)) {
             return [];
         }
         $data = array_map(function ($entry) {
             return is_string($entry) ? $entry : ($entry['shortcode'] ?? '');
         }, $this->shortcodes);
+
         return $data;
     }
 }

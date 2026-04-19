@@ -2,20 +2,20 @@
 
 namespace App\Ai\Agents;
 
+use App\Models\Setting;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Laravel\Ai\Attributes\Model;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasStructuredOutput;
 use Laravel\Ai\Contracts\HasTools;
 use Laravel\Ai\Contracts\Tool;
-use Laravel\Ai\Attributes\Model;
 use Laravel\Ai\Promptable;
-use App\Models\Setting;
 use Stringable;
 
 #[Model('gpt-5-mini')]
 
-class parseSMS implements Agent, Conversational, HasTools, HasStructuredOutput
+class parseSMS implements Agent, Conversational, HasStructuredOutput, HasTools
 {
     use Promptable;
 
@@ -77,17 +77,18 @@ PROMPT;
 
         $data = [
             'error' => $schema->string()->required()->enum(['', 'Cannot parse'])->description("Empty string means success. If failed parsing, must be 'Cannot parse'. if SMS related to password or OTP or other non-transactional SMS, use 'Cannot parse' and set all other fields to '' or 0 as appropriate."),
-            'transactionType' => $schema->string()->required()->enum(['withdrawal', 'deposit', 'payment', 'transfer', 'unknown'])->description("withdrawal=ATM cash, deposit=incoming, payment=POS/online/card purchase/bill payment, transfer=bank transfer out or in"),
+            'transactionType' => $schema->string()->required()->enum(['withdrawal', 'deposit', 'payment', 'transfer', 'unknown'])->description('withdrawal=ATM cash, deposit=incoming, payment=POS/online/card purchase/bill payment, transfer=bank transfer out or in'),
             'amount' => $schema->number()->required()->description("Transaction amount as a float. Use 0 when error != ''."),
-            'currency' => $schema->string()->required()->pattern("^[A-Z]{3}$")->description("3-letter currency code, uppercase. Use empty string when error != '' or not present."),
+            'currency' => $schema->string()->required()->pattern('^[A-Z]{3}$')->description("3-letter currency code, uppercase. Use empty string when error != '' or not present."),
             'totalAmount' => $schema->number()->required()->description("if the total amount mentioned explicitly, ignore the account balance if mentioned in the SMS, only add if total transaction amount mentioned, add the total amount as a float. Use 0 when error != '' or total amount not mentioned in the transaction."),
-            'totalAmountCurrency' => $schema->string()->required()->pattern("^[A-Z]{3}$")->description("if the total amount mentioned explicitly, add the total amount currency as a 3-letter code, uppercase. Use empty string when error != '' or not present."),
+            'totalAmountCurrency' => $schema->string()->required()->pattern('^[A-Z]{3}$')->description("if the total amount mentioned explicitly, add the total amount currency as a 3-letter code, uppercase. Use empty string when error != '' or not present."),
             'fees' => $schema->number()->required()->description("Optional fees amount as a float. Use 0 when error != '' or if not present."),
-            'feesCurrency' => $schema->string()->required()->pattern("^[A-Z]{3}$")->description("Optional fees currency as 3-letter uppercase. feesCurrency must be '' when fees = 0. Use empty string when error != '' or not present. Do not invent any currency."),
-            'transactionDateTime' => $schema->string()->required()->pattern("^$|^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[\\+\\-]\\d{2}:\\d{2})$")->description($transactionDateTime_description),
-            'MyAccountNumber' => $schema->string()->required()->description("My account/card identifier from the SMS (examples: X7001, XXX7001, **9010, ***3021, *2398*343, 3209332). Use '' if not present or error != ''."),
-            'OtherAccountName' => $schema->string()->required()->description("For payment/transfer: receiver or merchant name. For deposit: sender name. Remove branch numbers if they look like codes (ALDREES 239 -> ALDREES) or 'S121 TAMIMI' -> 'TAMIMI'. Use '' if not present or error != ''."),
-            'OtherAccountNumber' => $schema->string()->required()->description("For transfer: receiver account number. For deposit: sender account number. Use '' if not present or error != ''."),
+            'feesCurrency' => $schema->string()->required()->pattern('^[A-Z]{3}$')->description("Optional fees currency as 3-letter uppercase. feesCurrency must be '' when fees = 0. Use empty string when error != '' or not present. Do not invent any currency."),
+            'transactionDateTime' => $schema->string()->required()->pattern('^$|^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[\\+\\-]\\d{2}:\\d{2})$')->description($transactionDateTime_description),
+            'sourceAccountNumber' => $schema->string()->required()->description("The account/card number that money is leaving FROM. For withdrawal/payment: my account/card identifier (examples: X7001, **9010, ***3021, *2398*343, 3209332). For deposit: the sender's account number (may be empty). For transfer: the originating account number. Use '' if not present or error != ''."),
+            'sourceAccountName' => $schema->string()->required()->description("The name of the source (where money comes FROM). For deposit: sender/payer name. For withdrawal/payment/transfer: usually empty (the source is my own account). Remove branch numbers (ALDREES 239 -> ALDREES, 'S121 TAMIMI' -> 'TAMIMI'). Use '' if not present or error != ''."),
+            'destinationAccountNumber' => $schema->string()->required()->description("The account/card number that money is going TO. For deposit: my account/card identifier (examples: X7001, **9010, ***3021). For withdrawal/payment: the receiver/merchant account number (may be empty). For transfer: the destination account number. Use '' if not present or error != ''."),
+            'destinationAccountName' => $schema->string()->required()->description("The name of the destination (where money goes TO). For payment/withdrawal/transfer: receiver, merchant or beneficiary name. For deposit: usually empty (the destination is my own account). Remove branch numbers (ALDREES 239 -> ALDREES, 'S121 TAMIMI' -> 'TAMIMI'). Use '' if not present or error != ''."),
         ];
 
         return $data;

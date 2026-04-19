@@ -2,8 +2,8 @@
 
 use App\Models\SMSRegularExp;
 use App\Models\SMSSender;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -20,7 +20,7 @@ function createRegExp(int $senderId, array $overrides = []): SMSRegularExp
     return SMSRegularExp::create(array_merge([
         'sender_id' => $senderId,
         'transactionType' => 'withdrawal',
-        'regularExp' => '/Purchase.*Amount:\s*(?P<currency>\w+)\s+(?P<amount>[\d,.]+).*At:\s*(?P<OtherAccountName>.+?)\\n.*Account:\s*(?P<MyAccountNumber>\d+)/s',
+        'regularExp' => '/Purchase.*Amount:\s*(?P<currency>\w+)\s+(?P<amount>[\d,.]+).*At:\s*(?P<destinationAccountName>.+?)\\n.*Account:\s*(?P<sourceAccountNumber>\d+)/s',
         'regularExpMD5' => md5('/test/'),
         'createdBy' => 'system',
         'data' => [],
@@ -44,8 +44,8 @@ test('findValidRegExp returns match with named groups', function () {
     expect($result['transactionType'])->toBe('withdrawal');
     expect($result['matches']['amount'])->toBe('100.00');
     expect($result['matches']['currency'])->toBe('SAR');
-    expect($result['matches']['OtherAccountName'])->toBe('STARBUCKS');
-    expect($result['matches']['MyAccountNumber'])->toBe('1234');
+    expect($result['matches']['destinationAccountName'])->toBe('STARBUCKS');
+    expect($result['matches']['sourceAccountNumber'])->toBe('1234');
 });
 
 test('findValidRegExp returns false when no regex matches', function () {
@@ -110,7 +110,7 @@ test('findInvalidRegExp ignores valid transaction regex', function () {
 
 test('storeRegularExp creates new regex record', function () {
     $senderId = createTestSender();
-    $regex = '/Purchase.*Amount:\s*(?P<currency>\w+)\s+(?P<amount>[\d,.]+).*At:\s*(?P<OtherAccountName>\w+).*Account:\s*(?P<MyAccountNumber>\d+)/s';
+    $regex = '/Purchase.*Amount:\s*(?P<currency>\w+)\s+(?P<amount>[\d,.]+).*At:\s*(?P<destinationAccountName>\w+).*Account:\s*(?P<sourceAccountNumber>\d+)/s';
     $message = "Purchase\nAmount: SAR 100.00\nAt: STARBUCKS\nAccount: 1234";
 
     SMSRegularExp::storeRegularExp(
@@ -133,7 +133,7 @@ test('storeRegularExp creates new regex record', function () {
 
 test('storeRegularExp updates existing regex with same MD5', function () {
     $senderId = createTestSender();
-    $regex = '/Purchase.*Amount:\s*(?P<currency>\w+)\s+(?P<amount>[\d,.]+).*At:\s*(?P<OtherAccountName>\w+).*Account:\s*(?P<MyAccountNumber>\d+)/s';
+    $regex = '/Purchase.*Amount:\s*(?P<currency>\w+)\s+(?P<amount>[\d,.]+).*At:\s*(?P<destinationAccountName>\w+).*Account:\s*(?P<sourceAccountNumber>\d+)/s';
     $message = "Purchase\nAmount: SAR 100.00\nAt: STARBUCKS\nAccount: 1234";
 
     SMSRegularExp::storeRegularExp(
@@ -158,8 +158,8 @@ test('storeRegularExp updates existing regex with same MD5', function () {
 
 test('storeRegularExp marks invalid regex when pattern does not match', function () {
     $senderId = createTestSender();
-    $regex = '/NOMATCH(?P<amount>\d+)(?P<MyAccountNumber>\d+)(?P<OtherAccountName>\w+)/';
-    $message = "This does not match at all";
+    $regex = '/NOMATCH(?P<amount>\d+)(?P<sourceAccountNumber>\d+)(?P<destinationAccountName>\w+)/';
+    $message = 'This does not match at all';
 
     SMSRegularExp::storeRegularExp(
         message: $message,

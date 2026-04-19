@@ -44,7 +44,7 @@ test('detectCategory returns Unknown when no match found and AI disabled', funct
     $result = ParseSMS::detectCategory(
         message: 'Payment at unknown merchant',
         transactionType: 'payment',
-        matches: ['OtherAccountName' => 'UNKNOWN_SHOP_XYZ'],
+        matches: ['destinationAccountName' => 'UNKNOWN_SHOP_XYZ'],
     );
 
     expect($result['category'])->toBe('Unknown');
@@ -74,6 +74,6 @@ test('parseSMSviaLLM is a static method', function () {
 });
 
 test('ParseSMS model has no database table', function () {
-    $model = new ParseSMS();
+    $model = new ParseSMS;
     expect($model->getTable())->toBeFalse();
 });

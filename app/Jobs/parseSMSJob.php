@@ -104,9 +104,10 @@ class parseSMSJob implements ShouldQueue
 
             $transaction['transactionDateTime'] = $sms_date ?? $SMSRegularExp['matches']['transactionDateTime'] ?? null;
 
-            $transaction['MyAccountNumber'] = $SMSRegularExp['matches']['MyAccountNumber'] ?? null;
-            $transaction['OtherAccountNumber'] = $SMSRegularExp['matches']['OtherAccountNumber'] ?? null;
-            $transaction['OtherAccountName'] = $SMSRegularExp['matches']['OtherAccountName'] ?? null;
+            $transaction['sourceAccountNumber'] = $SMSRegularExp['matches']['sourceAccountNumber'] ?? null;
+            $transaction['sourceAccountName'] = $SMSRegularExp['matches']['sourceAccountName'] ?? null;
+            $transaction['destinationAccountNumber'] = $SMSRegularExp['matches']['destinationAccountNumber'] ?? null;
+            $transaction['destinationAccountName'] = $SMSRegularExp['matches']['destinationAccountName'] ?? null;
 
             $transaction['fees'] = $SMSRegularExp['matches']['fees'] ?? null;
             $transaction['feesCurrency'] = $SMSRegularExp['matches']['feesCurrency'] ?? null;
@@ -179,9 +180,10 @@ class parseSMSJob implements ShouldQueue
                 $transaction['totalAmountCurrency'] = $output['totalAmountCurrency'] ?? null;
                 $transaction['transactionDateTime'] = $sms_date ?? $output['transactionDateTime'] ?? null;
 
-                $transaction['MyAccountNumber'] = $output['MyAccountNumber'] ?? null;
-                $transaction['OtherAccountNumber'] = $output['OtherAccountNumber'] ?? null;
-                $transaction['OtherAccountName'] = $output['OtherAccountName'] ?? null;
+                $transaction['sourceAccountNumber'] = $output['sourceAccountNumber'] ?? null;
+                $transaction['sourceAccountName'] = $output['sourceAccountName'] ?? null;
+                $transaction['destinationAccountNumber'] = $output['destinationAccountNumber'] ?? null;
+                $transaction['destinationAccountName'] = $output['destinationAccountName'] ?? null;
 
                 $transaction['fees'] = $output['fees'] ?? null;
                 $transaction['feesCurrency'] = $output['feesCurrency'] ?? null;
@@ -248,7 +250,12 @@ class parseSMSJob implements ShouldQueue
             $budget_id = $status['attributes']->budget_id ?? null;
 
             // Create pending category review if mapping has alternatives
-            $merchantName = $transaction['OtherAccountName'] ?? $transaction['OtherAccountNumber'] ?? null;
+            // Pick the merchant/other-party name based on transaction type for category review.
+            if (in_array($transaction['type'] ?? null, ['withdrawal', 'payment', 'transfer'], true)) {
+                $merchantName = $transaction['destinationAccountName'] ?? $transaction['destinationAccountNumber'] ?? null;
+            } else {
+                $merchantName = $transaction['sourceAccountName'] ?? $transaction['sourceAccountNumber'] ?? null;
+            }
             if ($merchantName) {
                 try {
                     $mapping = CategoryMapping::lookupMapping($merchantName);

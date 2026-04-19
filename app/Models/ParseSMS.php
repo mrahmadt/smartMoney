@@ -70,15 +70,16 @@ class ParseSMS extends Model
 
         // Validate required named groups exist
         $hasAmount = str_contains($regex, '(?P<amount>');
-        $hasMyAccount = str_contains($regex, '(?P<MyAccountNumber>');
-        $hasOther = str_contains($regex, '(?P<OtherAccountName>') || str_contains($regex, '(?P<OtherAccountNumber>');
+        $hasAccount = str_contains($regex, '(?P<sourceAccountNumber>')
+            || str_contains($regex, '(?P<sourceAccountName>')
+            || str_contains($regex, '(?P<destinationAccountNumber>')
+            || str_contains($regex, '(?P<destinationAccountName>');
 
-        if (! $hasAmount || ! $hasMyAccount || ! $hasOther) {
+        if (! $hasAmount || ! $hasAccount) {
             Log::warning('GenerateRegex: missing required named groups', [
                 'regex' => $regex,
                 'hasAmount' => $hasAmount,
-                'hasMyAccount' => $hasMyAccount,
-                'hasOther' => $hasOther,
+                'hasAccount' => $hasAccount,
             ]);
 
             return null;
@@ -99,7 +100,7 @@ class ParseSMS extends Model
             // Compare captured values against parsed fields
             $currencyFields = ['currency', 'feesCurrency', 'totalAmountCurrency'];
             $amountFields = ['amount', 'totalAmount', 'fees'];
-            $fieldsToCompare = ['amount', 'currency', 'totalAmount', 'totalAmountCurrency', 'fees', 'feesCurrency', 'transactionDateTime', 'MyAccountNumber', 'OtherAccountName', 'OtherAccountNumber'];
+            $fieldsToCompare = ['amount', 'currency', 'totalAmount', 'totalAmountCurrency', 'fees', 'feesCurrency', 'transactionDateTime', 'sourceAccountNumber', 'sourceAccountName', 'destinationAccountNumber', 'destinationAccountName'];
             $mismatches = [];
             foreach ($fieldsToCompare as $field) {
                 $expected = (string) ($parsedOutput[$field] ?? '');
@@ -192,7 +193,7 @@ class ParseSMS extends Model
 
             return $output;
         } elseif (in_array($transactionType, ['deposit', 'payment'])) {
-            $account = $matches['OtherAccountNumber'] ?? $matches['OtherAccountName'] ?? false;
+            $account = self::otherPartyIdentifier($matches, $transactionType, preferNumber: true);
             if ($account) {
                 $category = CategoryMapping::lookup($account);
                 if ($category) {
@@ -207,7 +208,7 @@ class ParseSMS extends Model
             if ($categories) {
                 $SMSCategoryAgent->default_categories = $categories;
             }
-            $merchant = $matches['OtherAccountName'] ?? $matches['OtherAccountNumber'] ?? '';
+            $merchant = self::otherPartyIdentifier($matches, $transactionType, preferNumber: false) ?: '';
             $prompt = "Merchant: {$merchant}\nTransaction type: {$transactionType}\nSMS: {$message}";
             $model = Setting::get('parsesms_category_model');
             $response = $SMSCategoryAgent->prompt($prompt, model: $model);
@@ -221,5 +222,26 @@ class ParseSMS extends Model
         }
 
         return $output;
+    }
+
+    /**
+     * Resolve the "other party" identifier from source/destination fields based on transaction type.
+     * For deposit: other party is the source (sender). For withdrawal/payment/transfer: destination (receiver/merchant).
+     */
+    protected static function otherPartyIdentifier(array $matches, string $transactionType, bool $preferNumber): ?string
+    {
+        if ($transactionType === 'deposit') {
+            $number = $matches['sourceAccountNumber'] ?? '';
+            $name = $matches['sourceAccountName'] ?? '';
+        } else {
+            $number = $matches['destinationAccountNumber'] ?? '';
+            $name = $matches['destinationAccountName'] ?? '';
+        }
+
+        if ($preferNumber) {
+            return $number !== '' ? $number : ($name !== '' ? $name : null);
+        }
+
+        return $name !== '' ? $name : ($number !== '' ? $number : null);
     }
 }

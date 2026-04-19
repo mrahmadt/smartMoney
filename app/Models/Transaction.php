@@ -41,9 +41,10 @@ class Transaction extends Model
             'tags' => [],
             'fees' => null,
             'feesCurrency' => null,
-            'MyAccountNumber' => null,
-            'OtherAccountNumber' => null,
-            'OtherAccountName' => null,
+            'sourceAccountNumber' => null,
+            'sourceAccountName' => null,
+            'destinationAccountNumber' => null,
+            'destinationAccountName' => null,
             'totalAmount' => null,
             'totalAmountCurrency' => null,
         ];
@@ -117,19 +118,45 @@ class Transaction extends Model
             }
         }
 
-        $transaction['MyAccountNumber'] = trim($transaction['MyAccountNumber']);
-        if ($transaction['MyAccountNumber'] == '') {
-            $output['error'] = 'MyAccountNumber cannot be empty';
+        // Normalize source/destination fields
+        $transaction['sourceAccountNumber'] = trim((string) $transaction['sourceAccountNumber']);
+        $transaction['sourceAccountName'] = trim(self::cleanName((string) $transaction['sourceAccountName']));
+        $transaction['destinationAccountNumber'] = trim((string) $transaction['destinationAccountNumber']);
+        $transaction['destinationAccountName'] = trim(self::cleanName((string) $transaction['destinationAccountName']));
 
-            return $output;
+        Log::debug('Source/Destination fields', [
+            'type' => $transaction['type'],
+            'sourceAccountNumber' => $transaction['sourceAccountNumber'],
+            'sourceAccountName' => $transaction['sourceAccountName'],
+            'destinationAccountNumber' => $transaction['destinationAccountNumber'],
+            'destinationAccountName' => $transaction['destinationAccountName'],
+        ]);
+
+        // Determine which side ("source" or "destination") represents the user's own account ("my account").
+        // - deposit: money comes IN, so my account is the destination
+        // - withdrawal/payment: money goes OUT, so my account is the source
+        // - transfer: try source first (outgoing), then destination (incoming)
+        $myShortcode = '';
+        $mySide = null;
+        if ($transaction['type'] === 'deposit') {
+            $myShortcode = $transaction['destinationAccountNumber'];
+            $mySide = 'destination';
+        } elseif ($transaction['type'] === 'transfer') {
+            if ($transaction['sourceAccountNumber'] !== '') {
+                $myShortcode = $transaction['sourceAccountNumber'];
+                $mySide = 'source';
+            } elseif ($transaction['destinationAccountNumber'] !== '') {
+                $myShortcode = $transaction['destinationAccountNumber'];
+                $mySide = 'destination';
+            }
+        } else {
+            // withdrawal (FireFly type after payment->withdrawal mapping)
+            $myShortcode = $transaction['sourceAccountNumber'];
+            $mySide = 'source';
         }
 
-        $transaction['OtherAccountNumber'] = trim($transaction['OtherAccountNumber']);
-        Log::debug('OtherAccountName', ['OtherAccountName' => $transaction['OtherAccountName']]);
-        $transaction['OtherAccountName'] = trim(self::cleanName($transaction['OtherAccountName']));
-        Log::debug('OtherAccountName after cleanName', ['OtherAccountName' => $transaction['OtherAccountName']]);
-        if ($transaction['OtherAccountName'] == '' && $transaction['OtherAccountNumber'] == '') {
-            $output['error'] = 'OtherAccountName and OtherAccountNumber cannot both be empty';
+        if ($myShortcode === '') {
+            $output['error'] = 'My account number cannot be empty';
 
             return $output;
         }
@@ -141,9 +168,19 @@ class Transaction extends Model
             unset($transaction['category_id']);
         }
 
-        $accountResult = Account::findBySenderAndShortcode(senderName: $this->SMS_sender->sender, shortcode: $transaction['MyAccountNumber']);
+        $accountResult = Account::findBySenderAndShortcode(senderName: $this->SMS_sender->sender, shortcode: $myShortcode);
+
+        // Transfer fallback: if source side didn't resolve, try the destination side as my account (incoming transfer)
+        if (! $accountResult && $transaction['type'] === 'transfer' && $mySide === 'source' && $transaction['destinationAccountNumber'] !== '') {
+            $accountResult = Account::findBySenderAndShortcode(senderName: $this->SMS_sender->sender, shortcode: $transaction['destinationAccountNumber']);
+            if ($accountResult) {
+                $myShortcode = $transaction['destinationAccountNumber'];
+                $mySide = 'destination';
+            }
+        }
+
         if (! $accountResult) {
-            $output['error'] = 'MyAccountNumber does not match any account';
+            $output['error'] = 'My account number does not match any account';
 
             return $output;
         }
@@ -157,7 +194,22 @@ class Transaction extends Model
             $transaction['tags'][] = 'shortcode:sender_fallback';
         }
 
-        $budgetId = $myaccount->getBudgetForShortcode($transaction['MyAccountNumber']);
+        // Resolve the "other party" fields based on which side is mine.
+        if ($mySide === 'source') {
+            $otherName = $transaction['destinationAccountName'];
+            $otherNumber = $transaction['destinationAccountNumber'];
+        } else {
+            $otherName = $transaction['sourceAccountName'];
+            $otherNumber = $transaction['sourceAccountNumber'];
+        }
+
+        if ($otherName === '' && $otherNumber === '') {
+            $output['error'] = 'Other party name and number cannot both be empty';
+
+            return $output;
+        }
+
+        $budgetId = $myaccount->getBudgetForShortcode($myShortcode);
         if ($budgetId) {
             $transaction['budget_id'] = $budgetId;
         }
@@ -220,38 +272,51 @@ class Transaction extends Model
             $transaction['amount'] = $amount;
         }
 
-        $otherName = $transaction['OtherAccountName'] ?? $transaction['OtherAccountNumber'] ?? 'Unknown';
+        $otherDisplayName = $otherName !== '' ? $otherName : ($otherNumber !== '' ? $otherNumber : 'Unknown');
 
+        if ($transaction['type'] === 'transfer') {
+            // Try to resolve the other side to a known asset account (any sender) by shortcode/IBAN suffix.
+            $otherAccountResult = $otherNumber !== ''
+                ? Account::findBySenderAndShortcode(
+                    senderName: $this->SMS_sender->sender,
+                    shortcode: $otherNumber,
+                    alwaysGuessByIban: true,
+                )
+                : null;
+            $otherAccount = $otherAccountResult['account'] ?? null;
 
-        if ($transaction['type'] === 'deposit') {
+            if ($mySide === 'source') {
+                $transaction['source_id'] = $myaccount->firefly_account_id;
+                if ($otherAccount) {
+                    $transaction['destination_id'] = $otherAccount->firefly_account_id;
+                } else {
+                    $transaction['destination_name'] = $otherDisplayName;
+                }
+            } else {
+                $transaction['destination_id'] = $myaccount->firefly_account_id;
+                if ($otherAccount) {
+                    $transaction['source_id'] = $otherAccount->firefly_account_id;
+                } else {
+                    $transaction['source_name'] = $otherDisplayName;
+                }
+            }
+        } elseif ($transaction['type'] === 'deposit') {
             // Deposit: source = other party (revenue), destination = my asset account
             $transaction['destination_id'] = $myaccount->firefly_account_id;
-            $transaction['source_name'] = $otherName;
-        } elseif ($transaction['type'] === 'transfer') {
-            // Transfer: source = my account, destination = resolved other account
-            // $transaction['source_id'] = $myaccount->firefly_account_id;
-            // $otherAccountResult = Account::findBySenderAndShortcode(
-            //     senderName: $this->SMS_sender->sender,
-            //     shortcode: $transaction['OtherAccountNumber']
-            // );
-            // if ($otherAccountResult) {
-            //     $transaction['destination_id'] = $otherAccountResult['account']->firefly_account_id;
-            // } else {
-            //     $transaction['destination_name'] = $otherName;
-            // }
-            $transaction['destination_name'] = $otherName;
+            $transaction['source_name'] = $otherDisplayName;
         } else {
             // Withdrawal: source = my asset account, destination = other party (expense)
             $transaction['source_id'] = $myaccount->firefly_account_id;
-            $transaction['destination_name'] = $otherName;
+            $transaction['destination_name'] = $otherDisplayName;
         }
 
-        $transaction['tags'][] = $transaction['MyAccountNumber'];
+        $transaction['tags'][] = $myShortcode;
         unset($transaction['currency']);
         unset($transaction['feesCurrency']);
-        unset($transaction['MyAccountNumber']);
-        unset($transaction['OtherAccountName']);
-        unset($transaction['OtherAccountNumber']);
+        unset($transaction['sourceAccountNumber']);
+        unset($transaction['sourceAccountName']);
+        unset($transaction['destinationAccountNumber']);
+        unset($transaction['destinationAccountName']);
         if (! $transaction['tags']) {
             unset($transaction['tags']);
         }

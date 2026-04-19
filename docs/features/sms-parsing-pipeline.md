@@ -31,8 +31,8 @@ When `parsesms_regex_enabled` is `true` (default), the system first tries regex-
 - `SMSRegularExp::findValidRegExp()` — tries all active regex patterns for the SMS sender. Patterns use PHP named groups to extract:
   - `amount`, `currency`
   - `transactionDateTime`
-  - `MyAccountNumber`
-  - `OtherAccountName`, `OtherAccountNumber`
+  - `sourceAccountNumber`, `sourceAccountName`
+  - `destinationAccountNumber`, `destinationAccountName`
   - `fees`, `feesCurrency`
   - `totalAmount`, `totalAmountCurrency`
 

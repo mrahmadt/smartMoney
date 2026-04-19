@@ -38,6 +38,7 @@ class SMSRegularExp extends Model
     {
         return $this->belongsTo(SMSSender::class, 'sender_id');
     }
+
     public static function findRegExp($sender_id, $message, $is_validRegularExp = true, $is_validTransaction = true)
     {
         $regularExps = self::where('sender_id', $sender_id)
@@ -50,7 +51,7 @@ class SMSRegularExp extends Model
             if ($regexResult) {
                 $named = array_filter(
                     $matches,
-                    fn($k) => !is_int($k),
+                    fn ($k) => ! is_int($k),
                     ARRAY_FILTER_USE_KEY
                 );
 
@@ -62,6 +63,7 @@ class SMSRegularExp extends Model
                 ];
             }
         }
+
         return false;
     }
 
@@ -104,12 +106,15 @@ class SMSRegularExp extends Model
                 $is_validRegularExp = false;
             } elseif (
                 isset($matches['amount']) && is_numeric(str_replace(',', '', $matches['amount']))
-                && isset($matches['MyAccountNumber']) && $matches['MyAccountNumber'] != ''
                 &&
                 (
-                    (isset($matches['OtherAccountName']) && $matches['OtherAccountName'] != '')
+                    (isset($matches['sourceAccountNumber']) && $matches['sourceAccountNumber'] != '')
                     ||
-                    (isset($matches['OtherAccountNumber']) && $matches['OtherAccountNumber'] != '')
+                    (isset($matches['sourceAccountName']) && $matches['sourceAccountName'] != '')
+                    ||
+                    (isset($matches['destinationAccountNumber']) && $matches['destinationAccountNumber'] != '')
+                    ||
+                    (isset($matches['destinationAccountName']) && $matches['destinationAccountName'] != '')
                 )
             ) {
                 $is_validRegularExp = true;
@@ -119,7 +124,7 @@ class SMSRegularExp extends Model
             $existingExp = self::where('sender_id', $sender_id)
                 ->where('regularExpMD5', $regularExpMD5)
                 ->first();
-            if (!$existingExp) {
+            if (! $existingExp) {
                 $smsregular_exps = [
                     'sender_id' => $sender_id,
                     'transactionType' => $transactionType,
@@ -136,7 +141,7 @@ class SMSRegularExp extends Model
                     'is_validRegularExp' => $is_validRegularExp,
                 ];
                 SMSRegularExp::create($smsregular_exps);
-            }else{
+            } else {
                 $existingExp->update([
                     'transactionType' => $transactionType,
                     'data' => [
