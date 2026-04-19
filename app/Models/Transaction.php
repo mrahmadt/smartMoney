@@ -229,17 +229,17 @@ class Transaction extends Model
             $transaction['source_name'] = $otherName;
         } elseif ($transaction['type'] === 'transfer') {
             // Transfer: source = my account, destination = resolved other account
-            $transaction['source_id'] = $myaccount->firefly_account_id;
-            $otherAccountResult = Account::findBySenderAndShortcode(
-                senderName: $this->SMS_sender->sender,
-                shortcode: $transaction['OtherAccountNumber']
-            );
-
-                if ($otherAccountResult) {
-                    $transaction['destination_id'] = $otherAccountResult['account']->firefly_account_id;
-                } else {
-                    $transaction['destination_name'] = $otherName;
-                }
+            // $transaction['source_id'] = $myaccount->firefly_account_id;
+            // $otherAccountResult = Account::findBySenderAndShortcode(
+            //     senderName: $this->SMS_sender->sender,
+            //     shortcode: $transaction['OtherAccountNumber']
+            // );
+            // if ($otherAccountResult) {
+            //     $transaction['destination_id'] = $otherAccountResult['account']->firefly_account_id;
+            // } else {
+            //     $transaction['destination_name'] = $otherName;
+            // }
+            $transaction['destination_name'] = $otherName;
         } else {
             // Withdrawal: source = my asset account, destination = other party (expense)
             $transaction['source_id'] = $myaccount->firefly_account_id;
