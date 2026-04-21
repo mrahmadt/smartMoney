@@ -2,72 +2,60 @@
 
 namespace App\Filament\Pages;
 
-use App\Models\Category;
-use App\Models\CategoryMapping;
-use App\Models\PendingCategoryReview;
+use App\Models\PendingTransaction;
+use App\Models\SMS;
+use App\Models\Transaction;
 use App\Services\fireflyIII;
 use BackedEnum;
-use Filament\Pages\Page;
+use Filament\Actions\Action;
 use Filament\Notifications\Notification;
-use Filament\Support\Icons\Heroicon;
-use Filament\Tables;
+use Filament\Pages\Page;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
-use Filament\Tables\Concerns\InteractsWithTable;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\HtmlString;
 
 class ReviewTransactions extends Page implements HasTable
 {
     use InteractsWithTable;
 
     protected string $view = 'filament.pages.review-transactions';
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-arrow-path';
-    protected static ?int $navigationSort = 4;
+
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-clipboard-document-check';
+
+    protected static ?int $navigationSort = 3;
+
+    public static function canAccess(): bool
+    {
+        return Auth::id() === 1;
+    }
 
     public static function getNavigationLabel(): string
     {
         app()->setLocale(auth()->user()->language ?? 'en');
-        return __('menu.review_categories');
+
+        return __('menu.review_transactions');
     }
 
     public function getTitle(): string
     {
         app()->setLocale(Auth::user()->language ?? 'en');
-        return __('menu.review_categories');
-    }
 
-    // public static function getNavigationGroup(): string|\UnitEnum|null
-    // {
-    //     app()->setLocale(auth()->user()->language ?? 'en');
-    //     return __('menu.config');
-    // }
+        return __('menu.review_transactions');
+    }
 
     public static function getNavigationBadge(): ?string
     {
-        $count = PendingCategoryReview::pending()
-            ->forUser(Auth::user())
-            ->count();
+        $count = PendingTransaction::count();
 
         return $count > 0 ? (string) $count : null;
     }
 
     public static function getNavigationBadgeColor(): ?string
     {
-        return 'warning';
-    }
-
-    public function mount(): void
-    {
-        app()->setLocale(Auth::user()->language ?? 'en');
-
-        // Clean up orphaned reviews
-        PendingCategoryReview::pending()
-            ->whereDoesntHave('categoryMapping')
-            ->update(['status' => 'dismissed']);
+        return 'danger';
     }
 
     public function table(Table $table): Table
@@ -76,171 +64,202 @@ class ReviewTransactions extends Page implements HasTable
 
         return $table
             ->query(
-                PendingCategoryReview::pending()
-                    ->forUser(Auth::user())
-                    ->with(['currentCategory', 'categoryMapping'])
-                    ->orderByDesc('transaction_date')
+                PendingTransaction::query()->with('sms')->orderByDesc('date')
             )
             ->columns([
-                TextColumn::make('transaction_date')
+                TextColumn::make('date')
                     ->label(__('widget.date'))
                     ->dateTime('M d, g:ia')
                     ->sortable(),
-                TextColumn::make('account_name')
-                    ->label(__('menu.merchant_name'))
-                    ->searchable(),
-                TextColumn::make('transaction_amount')
-                    ->label(__('widget.amount'))
-                    ->formatStateUsing(fn ($state, $record) => number_format($state, 0, '.', ',') . ' ' . ($record->currency_code ?? ''))
-                    ->color('danger'),
-                TextColumn::make('currentCategory.name')
-                    ->label(__('widget.category'))
+                TextColumn::make('type')
+                    ->label(__('menu.type'))
                     ->badge()
-                    ->color('primary')
-                    ->formatStateUsing(fn ($record) => $record->currentCategory?->translatedName()),
-                TextColumn::make('alternative_category_ids')
-                    ->label(__('menu.alternative_categories'))
-                    ->html()
-                    ->getStateUsing(function ($record) {
-                        $ids = $record->alternative_category_ids ?? [];
-                        if (empty($ids)) return '-';
-                        $categories = Category::whereIn('id', $ids)->get();
-                        $buttons = [];
-                        foreach ($categories as $category) {
-                            $escapedName = e($category->translatedName());
-                            $buttons[] = '<span style="display:inline-block;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;border-radius:6px;padding:4px 14px;font-size:12px;font-weight:500;cursor:pointer;margin:4px 4px 4px 0;" wire:click="applyAlternative(' . $record->id . ', ' . $category->id . ')" onmouseover="this.style.opacity=\'0.7\'" onmouseout="this.style.opacity=\'1\'">' . $escapedName . '</span>';
-                        }
-                        return new HtmlString(implode(' ', $buttons));
+                    ->color(fn (string $state): string => match ($state) {
+                        'withdrawal' => 'danger',
+                        'deposit' => 'success',
+                        'transfer' => 'info',
+                        default => 'gray',
                     }),
+                TextColumn::make('sms.message')
+                    ->label(__('menu.sms'))
+                    ->searchable()
+                    ->wrap()
+                    ->html()
+                    ->formatStateUsing(function ($state) {
+                        if (! $state) {
+                            return '-';
+                        }
+                        $escaped = e($state);
+                        $html = nl2br($escaped);
+                        $isRtl = preg_match('/[\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}\x{FB50}-\x{FDFF}\x{FE70}-\x{FEFF}]/u', $state);
+
+                        return $isRtl
+                            ? '<div dir="rtl" style="direction:rtl;text-align:right">'.$html.'</div>'
+                            : $html;
+                    }),
+                TextColumn::make('amount')
+                    ->label(__('widget.amount'))
+                    ->formatStateUsing(fn ($state, $record) => number_format($state, 2, '.', ',').' '.($record->currency ?? ''))
+                    ->color(fn ($record) => $record->type === 'deposit' ? 'success' : 'danger'),
+                TextColumn::make('reason')
+                    ->label(__('menu.reason'))
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'manual_review' => 'info',
+                        'error' => 'danger',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (string $state): string => __("menu.{$state}")),
+                TextColumn::make('error_message')
+                    ->label(__('menu.error'))
+                    ->limit(40)
+                    ->wrap(true)
+                    ->placeholder('-')
+                    ->tooltip(fn ($record) => $record->error_message),
             ])
             ->recordActions([
-                \Filament\Actions\Action::make('dismiss')
+                Action::make('edit')
+                    ->label(__('menu.edit'))
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('primary')
+                    ->url(fn (PendingTransaction $record): string => EditPendingTransaction::getUrl(['record' => $record->id])),
+                Action::make('retry')
+                    ->label(__('menu.retry'))
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->action(function (PendingTransaction $record): void {
+                        $this->submitToFirefly($record);
+                    }),
+                Action::make('dismiss')
+                    ->label(__('menu.dismiss'))
                     ->icon('heroicon-o-x-mark')
                     ->color('gray')
-                    ->label(__('menu.dismiss'))
-                    ->requiresConfirmation(false)
-                    ->action(fn (PendingCategoryReview $record) => $this->dismissReview($record)),
+                    ->requiresConfirmation()
+                    ->action(function (PendingTransaction $record): void {
+                        if ($record->sms_id) {
+                            SMS::where('id', $record->sms_id)->update(['is_processed' => true]);
+                        }
+                        $record->delete();
+                        Notification::make()
+                            ->title(__('menu.dismissed'))
+                            ->info()
+                            ->send();
+                    }),
             ]);
     }
 
-    public function applyAlternative(int $reviewId, int $categoryId): void
+    protected function submitToFirefly(PendingTransaction $record): void
     {
-        $review = PendingCategoryReview::pending()
-            ->forUser(Auth::user())
-            ->find($reviewId);
+        $fireflyTransaction = [
+            'type' => $record->type,
+            'amount' => (float) $record->amount,
+            'currency_code' => $record->currency,
+            'date' => $record->date instanceof \DateTimeInterface ? $record->date->toIso8601String() : $record->date,
+        ];
 
-        if (!$review) {
-            Notification::make()
-                ->title(__('menu.review_already_processed'))
-                ->warning()
-                ->send();
-            return;
+        if (! empty($record->description)) {
+            $fireflyTransaction['description'] = $record->description;
+        }
+        if (! empty($record->notes)) {
+            $fireflyTransaction['notes'] = $record->notes;
+        }
+        if (! empty($record->category_name)) {
+            $fireflyTransaction['category_name'] = $record->category_name;
+        }
+        if (! empty($record->tags)) {
+            $fireflyTransaction['tags'] = $record->tags;
+        }
+        if (! empty($record->budget_id)) {
+            $fireflyTransaction['budget_id'] = (int) $record->budget_id;
         }
 
-        // Validate category is in the review's alternatives
-        $allowedIds = array_map('intval', $review->alternative_category_ids ?? []);
-        if (!in_array($categoryId, $allowedIds, true)) {
-            return;
+        // ID takes priority over name
+        if ($record->source_account_id) {
+            $fireflyTransaction['source_id'] = (int) $record->source_account_id;
+        } elseif (! empty($record->source_account_name)) {
+            $fireflyTransaction['source_name'] = $record->source_account_name;
         }
 
-        $category = Category::find($categoryId);
-        if (!$category) return;
+        if ($record->destination_account_id) {
+            $fireflyTransaction['destination_id'] = (int) $record->destination_account_id;
+        } elseif (! empty($record->destination_account_name)) {
+            $fireflyTransaction['destination_name'] = $record->destination_account_name;
+        }
 
         try {
-            $firefly = new fireflyIII();
-            $firefly->updateTransaction($review->firefly_transaction_id, [
-                'category_name' => $category->name,
-            ]);
+            $firefly = new fireflyIII;
+            $result = $firefly->newTransaction($fireflyTransaction);
 
-            $review->update(['status' => 'dismissed']);
+            if (isset($result->exception) || isset($result->errors) || isset($result->message)) {
+                $errorParts = [];
+                if (isset($result->message)) {
+                    $errorParts[] = $result->message;
+                }
+                if (isset($result->errors)) {
+                    foreach ((array) $result->errors as $field => $messages) {
+                        foreach ((array) $messages as $msg) {
+                            $errorParts[] = "[{$field}] {$msg}";
+                        }
+                    }
+                }
+                $errorMsg = implode(' | ', $errorParts) ?: 'Unknown error';
 
-            Notification::make()
-                ->title(__('menu.transaction_updated', ['category' => $category->name]))
-                ->success()
-                ->send();
-        } catch (\Exception $e) {
-            Log::error('Failed to update Firefly III transaction', ['error' => $e->getMessage(), 'review_id' => $reviewId]);
-            Notification::make()
-                ->title(__('menu.update_failed'))
-                ->danger()
-                ->send();
-        }
-    }
+                // Update the record with the new error
+                $record->update(['error_message' => $errorMsg, 'reason' => 'error']);
 
-    public function setDefault(int $reviewId, int $categoryId): void
-    {
-        $review = PendingCategoryReview::pending()
-            ->forUser(Auth::user())
-            ->with('categoryMapping')
-            ->find($reviewId);
+                Notification::make()
+                    ->title(__('menu.transaction_submit_failed'))
+                    ->body($errorMsg)
+                    ->danger()
+                    ->send();
 
-        if (!$review || !$review->categoryMapping) {
-            Notification::make()
-                ->title(__('menu.review_already_processed'))
-                ->warning()
-                ->send();
-            return;
-        }
-
-        // Validate category is in the review's alternatives
-        $allowedIds = array_map('intval', $review->alternative_category_ids ?? []);
-        if (!in_array($categoryId, $allowedIds, true)) {
-            return;
-        }
-
-        $category = Category::find($categoryId);
-        if (!$category) return;
-
-        try {
-            $mapping = $review->categoryMapping;
-            $oldCategoryId = (int) $mapping->category_id;
-            $alternatives = array_map('intval', $mapping->alternative_category_ids ?? []);
-
-            // Move old default to alternatives
-            if (!in_array($oldCategoryId, $alternatives, true)) {
-                $alternatives[] = $oldCategoryId;
+                return;
             }
 
-            // Remove the new default from alternatives
-            $alternatives = array_values(array_filter($alternatives, fn ($id) => $id !== $categoryId));
+            if (isset($result->data->id)) {
+                $transactionId = $result->data->id;
+                $attributes = $result->data->attributes->transactions[0];
 
-            DB::beginTransaction();
+                // Update SMS record
+                if ($record->sms_id) {
+                    SMS::where('id', $record->sms_id)->update([
+                        'is_processed' => true,
+                        'transaction_id' => $transactionId,
+                    ]);
+                }
 
-            $mapping->update([
-                'category_id' => $categoryId,
-                'alternative_category_ids' => $alternatives,
-            ]);
+                // Run post-creation actions
+                Transaction::postCreationActions(
+                    attributes: $attributes,
+                    transaction: $record->toArray(),
+                    smsId: $record->sms_id,
+                );
 
-            $review->update(['status' => 'dismissed']);
+                $record->delete();
 
-            $firefly = new fireflyIII();
-            $firefly->updateTransaction($review->firefly_transaction_id, [
-                'category_name' => $category->name,
-            ]);
+                Notification::make()
+                    ->title(__('menu.transaction_submitted'))
+                    ->success()
+                    ->send();
+            } else {
+                $record->update(['error_message' => 'Unknown error from Firefly', 'reason' => 'error']);
 
-            DB::commit();
-
-            Notification::make()
-                ->title(__('menu.default_changed', ['store' => $review->account_name, 'category' => $category->name]))
-                ->success()
-                ->send();
+                Notification::make()
+                    ->title(__('menu.transaction_submit_failed'))
+                    ->danger()
+                    ->send();
+            }
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Failed to set default category', ['error' => $e->getMessage(), 'review_id' => $reviewId]);
+            Log::error('Failed to submit pending transaction', ['error' => $e->getMessage(), 'record_id' => $record->id]);
+
+            $record->update(['error_message' => $e->getMessage(), 'reason' => 'error']);
+
             Notification::make()
-                ->title(__('menu.update_failed'))
+                ->title(__('menu.transaction_submit_failed'))
+                ->body($e->getMessage())
                 ->danger()
                 ->send();
         }
-    }
-
-    public function dismissReview(PendingCategoryReview $record): void
-    {
-        $record->update(['status' => 'dismissed']);
-
-        Notification::make()
-            ->title(__('menu.dismissed'))
-            ->info()
-            ->send();
     }
 }

@@ -34,4 +34,5 @@
             @endforelse
         </div>
     @endif
+    <br><br>
 </x-filament-panels::page>

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\fireflyIII;
+use App\Services\TransactionCache;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -355,6 +356,115 @@ class Transaction extends Model
         }
 
         return $output;
+    }
+
+    /**
+     * Run post-creation actions after a transaction is successfully submitted to Firefly.
+     * Shared between parseSMSJob and ReviewTransactions page.
+     *
+     * @param  object  $attributes  Firefly transaction attributes
+     * @param  array  $transaction  Parsed transaction data
+     * @param  int|null  $smsId  The SMS record ID (to update is_processed/transaction_id)
+     */
+    public static function postCreationActions(object $attributes, array $transaction, ?int $smsId = null): void
+    {
+        $localAccount = Account::where('firefly_account_id', $attributes->source_id)->first();
+        $user_id = $localAccount?->user_id ?? 1;
+        $user = User::find($user_id);
+
+        TransactionCache::clear($user_id);
+        if ($user_id !== 1) {
+            TransactionCache::clear(1);
+        }
+
+        Alert::newTransaction(transaction: $attributes, user: $user);
+
+        $budget_id = $attributes->budget_id ?? null;
+
+        // Create pending category review if mapping has alternatives
+        if (in_array($transaction['type'] ?? null, ['withdrawal', 'payment', 'transfer'], true)) {
+            $merchantName = $transaction['destinationAccountName'] ?? $transaction['destination_name'] ?? null;
+        } else {
+            $merchantName = $transaction['sourceAccountName'] ?? $transaction['source_name'] ?? null;
+        }
+        if ($merchantName) {
+            try {
+                $mapping = CategoryMapping::lookupMapping($merchantName);
+                if ($mapping && $mapping->hasAlternatives()) {
+                    PendingCategoryReview::create([
+                        'firefly_transaction_id' => $attributes->transaction_journal_id ?? null,
+                        'firefly_journal_id' => $attributes->transaction_journal_id ?? null,
+                        'account_name' => $merchantName,
+                        'category_mapping_id' => $mapping->id,
+                        'current_category_id' => $mapping->category_id,
+                        'alternative_category_ids' => $mapping->alternative_category_ids,
+                        'user_id' => $localAccount?->user_id,
+                        'budget_id' => $localAccount?->budget_id ?? $budget_id,
+                        'transaction_amount' => $attributes->amount ?? $transaction['amount'] ?? 0,
+                        'currency_code' => $attributes->currency_code ?? $transaction['currency'] ?? null,
+                        'transaction_date' => $attributes->date ?? now(),
+                        'transaction_description' => $attributes->description ?? $transaction['description'] ?? '',
+                        'status' => 'pending',
+                    ]);
+                }
+            } catch (\Exception $e) {
+                \Log::warning('Failed to create pending category review', ['error' => $e->getMessage(), 'merchant' => $merchantName]);
+            }
+        }
+
+        $destination_id = $attributes->destination_id ?? null;
+
+        if ($destination_id) {
+            $destAbnormal = self::abnormalDestinationAmount(
+                amount: $attributes->amount,
+                destination_id: $destination_id,
+                transaction_journal_id: $attributes->transaction_journal_id,
+                budget_id: $budget_id,
+            );
+            if ($destAbnormal) {
+                $destName = $attributes->destination_name ?? 'Unknown';
+                app()->setLocale($user->language ?? 'en');
+                Alert::createAlertWithAdminCopy(
+                    title: __('alert.abnormal_destination_title', ['destination' => $destName]),
+                    message: __('alert.abnormal_destination_message', [
+                        'multiplier' => $destAbnormal['multiplier'],
+                        'destination' => $destName,
+                        'amount' => str_replace('.00', '', number_format($destAbnormal['amount'], 2)),
+                        'average_amount' => str_replace('.00', '', number_format($destAbnormal['average_amount'], 2)),
+                    ]),
+                    user_id: $user_id,
+                    transaction_journal_id: $attributes->transaction_journal_id,
+                    data: $destAbnormal,
+                    pin: true,
+                    topic: 'abnormal',
+                );
+            }
+        }
+
+        $categoryName = $attributes->category_name ?? null;
+        if ($categoryName) {
+            $date = isset($attributes->date) ? Carbon::parse($attributes->date)->format('Y-m-d') : null;
+            $freqResult = self::unusualCategoryFrequency(
+                categoryName: $categoryName,
+                date: $date,
+                budget_id: $budget_id,
+            );
+            if ($freqResult) {
+                app()->setLocale($user->language ?? 'en');
+                Alert::createAlertWithAdminCopy(
+                    title: __('alert.unusual_category_frequency_title', ['category' => $categoryName]),
+                    message: __('alert.unusual_category_frequency_message', [
+                        'count' => $freqResult['today_count'],
+                        'category' => $categoryName,
+                        'average' => str_replace('.00', '', $freqResult['average_daily_count']),
+                    ]),
+                    user_id: $user_id,
+                    data: $freqResult,
+                    pin: true,
+                    topic: 'abnormal',
+                );
+            }
+        }
     }
 
     public static function abnormalTransaction($amount, $type, $abnormal_threshold_percentage, $transaction_journal_id, $source_id = null, $destination_id = null, $category_id = null, $budget_id = null)

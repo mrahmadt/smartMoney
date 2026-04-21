@@ -4,7 +4,6 @@ namespace App\Filament\Widgets;
 
 use App\Models\Category;
 use App\Models\PendingCategoryReview;
-use App\Filament\Pages\ReviewTransactions;
 use App\Services\fireflyIII;
 use Filament\Notifications\Notification;
 use Filament\Widgets\Widget;
@@ -41,23 +40,24 @@ class PendingCategoryReviewsWidget extends Widget
             : collect();
 
         $this->reviews = $reviews->map(function ($review) use ($categoryModels) {
-                $altCategories = [];
-                foreach ($review->alternative_category_ids ?? [] as $id) {
-                    if ($categoryModels->has($id)) {
-                        $altCategories[(int) $id] = $categoryModels[$id]->translatedName();
-                    }
+            $altCategories = [];
+            foreach ($review->alternative_category_ids ?? [] as $id) {
+                if ($categoryModels->has($id)) {
+                    $altCategories[(int) $id] = $categoryModels[$id]->translatedName();
                 }
-                return [
-                    'id' => $review->id,
-                    'account_name' => $review->account_name,
-                    'amount' => number_format($review->transaction_amount, 0, '.', ','),
-                    'currency_code' => $review->currency_code ?? '',
-                    'date' => $review->transaction_date->format('M d, g:ia'),
-                    'current_category' => $review->currentCategory?->translatedName() ?? 'Unknown',
-                    'alternatives' => $altCategories,
-                    'firefly_transaction_id' => $review->firefly_transaction_id,
-                ];
-            })
+            }
+
+            return [
+                'id' => $review->id,
+                'account_name' => $review->account_name,
+                'amount' => number_format($review->transaction_amount, 0, '.', ','),
+                'currency_code' => $review->currency_code ?? '',
+                'date' => $review->transaction_date->format('M d, g:ia'),
+                'current_category' => $review->currentCategory?->translatedName() ?? 'Unknown',
+                'alternatives' => $altCategories,
+                'firefly_transaction_id' => $review->firefly_transaction_id,
+            ];
+        })
             ->toArray();
     }
 
@@ -67,22 +67,25 @@ class PendingCategoryReviewsWidget extends Widget
             ->forUser(Auth::user())
             ->find($reviewId);
 
-        if (!$review) {
+        if (! $review) {
             Notification::make()->title(__('menu.review_already_processed'))->warning()->send();
+
             return;
         }
 
         // Validate category is in the review's alternatives
         $allowedIds = array_map('intval', $review->alternative_category_ids ?? []);
-        if (!in_array($categoryId, $allowedIds, true)) {
+        if (! in_array($categoryId, $allowedIds, true)) {
             return;
         }
 
         $category = Category::find($categoryId);
-        if (!$category) return;
+        if (! $category) {
+            return;
+        }
 
         try {
-            $firefly = new fireflyIII();
+            $firefly = new fireflyIII;
             $firefly->updateTransaction($review->firefly_transaction_id, [
                 'category_name' => $category->name,
             ]);

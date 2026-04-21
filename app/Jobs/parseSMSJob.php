@@ -3,11 +3,9 @@
 namespace App\Jobs;
 
 use App\Models\Account;
-use App\Models\Alert;
-use App\Models\CategoryMapping;
 use App\Models\CurrencyMap;
 use App\Models\ParseSMS;
-use App\Models\PendingCategoryReview;
+use App\Models\PendingTransaction;
 use App\Models\Setting;
 use App\Models\SMS;
 use App\Models\SMSRegularExp;
@@ -15,8 +13,6 @@ use App\Models\SMSSender;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\fireflyIII;
-use App\Services\TransactionCache;
-use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -214,6 +210,33 @@ class parseSMSJob implements ShouldQueue
 
         $this->dryRunLog('transaction', 'Parsed transaction data', $transaction);
 
+        // Check if auto-create is disabled — if so, validate via dry run and queue for review
+        $autoCreate = Setting::getBool('auto_create_transaction', true);
+
+        if (! $autoCreate && ! $this->dryRun) {
+            $transactionModel = new Transaction;
+            $status = $transactionModel->createTransaction($transaction, $this->SMS_sender, true);
+
+            if ($status['success']) {
+                $resolvedTransaction = $status['transaction'] ?? [];
+                $transaction['source_id'] = $resolvedTransaction['source_id'] ?? null;
+                $transaction['source_name'] = $resolvedTransaction['source_name'] ?? null;
+                $transaction['destination_id'] = $resolvedTransaction['destination_id'] ?? null;
+                $transaction['destination_name'] = $resolvedTransaction['destination_name'] ?? null;
+                $transaction['budget_id'] = $resolvedTransaction['budget_id'] ?? null;
+                $transaction['currency'] = $resolvedTransaction['currency_code'] ?? $transaction['currency'] ?? '';
+                $transaction['date'] = $resolvedTransaction['date'] ?? $transaction['date'] ?? now();
+                $transaction['amount'] = $resolvedTransaction['amount'] ?? $transaction['amount'];
+
+                $this->createPendingTransaction($transaction, 'manual_review');
+                $this->sms->update(['is_processed' => true]);
+            } else {
+                SMS::processInvalidSMS(sms: $this->sms, message: 'Failed validation for review', errors: 'Validation failed: '.($status['error'] ?? 'Unknown'), keep: true);
+            }
+
+            return;
+        }
+
         $transactionModel = new Transaction;
         $status = $transactionModel->createTransaction($transaction, $this->SMS_sender, $this->dryRun);
 
@@ -235,119 +258,15 @@ class parseSMSJob implements ShouldQueue
                 'transaction_id' => $status['transaction_id'],
             ]);
 
-            $localAccount = Account::where('firefly_account_id', $status['attributes']->source_id)->first();
-            $user_id = $localAccount?->user_id ?? 1;
-            $user = User::find($user_id);
-
-            // Clear dashboard transaction cache for affected users
-            TransactionCache::clear($user_id);
-            if ($user_id !== 1) {
-                TransactionCache::clear(1);
-            }
-
-            Alert::newTransaction(transaction: $status['attributes'], user: $user);
-
-            $budget_id = $status['attributes']->budget_id ?? null;
-
-            // Create pending category review if mapping has alternatives
-            // Pick the merchant/other-party name based on transaction type for category review.
-            if (in_array($transaction['type'] ?? null, ['withdrawal', 'payment', 'transfer'], true)) {
-                $merchantName = $transaction['destinationAccountName'] ?? $transaction['destinationAccountNumber'] ?? null;
-            } else {
-                $merchantName = $transaction['sourceAccountName'] ?? $transaction['sourceAccountNumber'] ?? null;
-            }
-            if ($merchantName) {
-                try {
-                    $mapping = CategoryMapping::lookupMapping($merchantName);
-                    if ($mapping && $mapping->hasAlternatives()) {
-                        PendingCategoryReview::create([
-                            'firefly_transaction_id' => $status['transaction_id'],
-                            'firefly_journal_id' => $status['attributes']->transaction_journal_id ?? $status['transaction_id'],
-                            'account_name' => $merchantName,
-                            'category_mapping_id' => $mapping->id,
-                            'current_category_id' => $mapping->category_id,
-                            'alternative_category_ids' => $mapping->alternative_category_ids,
-                            'user_id' => $localAccount?->user_id,
-                            'budget_id' => $localAccount?->budget_id ?? $budget_id,
-                            'transaction_amount' => $status['attributes']->amount ?? $transaction['amount'] ?? 0,
-                            'currency_code' => $status['attributes']->currency_code ?? $transaction['currency'] ?? null,
-                            'transaction_date' => $status['attributes']->date ?? now(),
-                            'transaction_description' => $status['attributes']->description ?? $transaction['description'] ?? '',
-                            'status' => 'pending',
-                        ]);
-                    }
-                } catch (\Exception $e) {
-                    \Log::warning('Failed to create pending category review', ['error' => $e->getMessage(), 'merchant' => $merchantName]);
-                }
-            }
-            // $category_id = $status['attributes']->category_id ?? null;
-
-            // $source_id = $status['attributes']->source_id ?? null;
-            $destination_id = $status['attributes']->destination_id ?? null;
-            // $type = $status['attributes']->type ?? ($transaction['type'] ?? null);
-
-            // $abnormal_threshold_percentage = 0;
-
-            // Real-time check: Destination amount abnormal
-            // This is 40x your normal spend at Aldrewes. Amount: 30,000, Average: 750
-            if ($destination_id) {
-                $destAbnormal = Transaction::abnormalDestinationAmount(
-                    amount: $status['attributes']->amount,
-                    destination_id: $destination_id,
-                    transaction_journal_id: $status['attributes']->transaction_journal_id,
-                    budget_id: $budget_id,
-                );
-                if ($destAbnormal) {
-                    $destName = $status['attributes']->destination_name ?? 'Unknown';
-                    app()->setLocale($user->language ?? 'en');
-                    Alert::createAlertWithAdminCopy(
-                        title: __('alert.abnormal_destination_title', ['destination' => $destName]),
-                        message: __('alert.abnormal_destination_message', [
-                            'multiplier' => $destAbnormal['multiplier'],
-                            'destination' => $destName,
-                            'amount' => str_replace('.00', '', number_format($destAbnormal['amount'], 2)),
-                            'average_amount' => str_replace('.00', '', number_format($destAbnormal['average_amount'], 2)),
-                        ]),
-                        user_id: $user_id,
-                        transaction_journal_id: $status['attributes']->transaction_journal_id,
-                        data: $destAbnormal,
-                        pin: true,
-                        topic: 'abnormal',
-                    );
-                }
-            }
-
-            // Real-time check: Unusual category frequency today
-            // 2 Transportation transactions today, which is unusual (average: 0.4 per day)
-            $categoryName = $status['attributes']->category_name ?? null;
-            if ($categoryName) {
-                if (isset($status['attributes']->date)) {
-                    $date = Carbon::parse($status['attributes']->date)->format('Y-m-d');
-                } else {
-                    $date = null;
-                }
-                $freqResult = Transaction::unusualCategoryFrequency(
-                    categoryName: $categoryName,
-                    date: $date,
-                    budget_id: $budget_id,
-                );
-                if ($freqResult) {
-                    app()->setLocale($user->language ?? 'en');
-                    Alert::createAlertWithAdminCopy(
-                        title: __('alert.unusual_category_frequency_title', ['category' => $categoryName]),
-                        message: __('alert.unusual_category_frequency_message', [
-                            'count' => $freqResult['today_count'],
-                            'category' => $categoryName,
-                            'average' => str_replace('.00', '', $freqResult['average_daily_count']),
-                        ]),
-                        user_id: $user_id,
-                        data: $freqResult,
-                        pin: true,
-                        topic: 'abnormal',
-                    );
-                }
-            }
+            Transaction::postCreationActions(
+                attributes: $status['attributes'],
+                transaction: $transaction,
+                smsId: $this->sms->id,
+            );
         } else {
+            // Create a pending transaction for review so the user can fix and retry
+            $this->createPendingTransaction($transaction, 'error', $status['error'] ?? 'Unknown error');
+
             SMS::processInvalidSMS(sms: $this->sms, message: 'Failed to create transaction', errors: 'Failed to create transaction: '.$status['error'].' '.print_r($transaction, true), keep: true);
 
             return;
@@ -357,5 +276,61 @@ class parseSMSJob implements ShouldQueue
     protected function dryRunLog(string $type, string $message, array $data = []): void
     {
         $this->dryRunOutput[] = compact('type', 'message', 'data');
+    }
+
+    protected function createPendingTransaction(array $transaction, string $reason, ?string $errorMessage = null): void
+    {
+        try {
+            // Compute the final amount: totalAmount > amount+fees > amount
+            $amount = (float) ($transaction['amount'] ?? 0);
+            $currency = $transaction['currency'] ?? '';
+
+            $totalAmount = isset($transaction['totalAmount']) ? str_replace(',', '', $transaction['totalAmount']) : null;
+            if (is_numeric($totalAmount) && (float) $totalAmount > 0) {
+                $amount = (float) $totalAmount;
+                $currency = $transaction['totalAmountCurrency'] ?? $currency;
+            } else {
+                $fees = isset($transaction['fees']) ? str_replace(',', '', $transaction['fees']) : null;
+                if (is_numeric($fees) && (float) $fees > 0) {
+                    $feesCurrency = $transaction['feesCurrency'] ?? '';
+                    if ($feesCurrency === '' || strtoupper($feesCurrency) === strtoupper($currency)) {
+                        $amount += (float) $fees;
+                    }
+                }
+            }
+
+            // Resolve budget_id from account if not already set
+            $budgetId = $transaction['budget_id'] ?? null;
+            if (! $budgetId && isset($transaction['source_id'])) {
+                $account = Account::where('firefly_account_id', $transaction['source_id'])->first();
+                if ($account) {
+                    $budgetId = $account->budget_id;
+                }
+            }
+
+            PendingTransaction::create([
+                'sms_id' => $this->sms->id,
+                'reason' => $reason,
+                'error_message' => $errorMessage,
+                'type' => $transaction['type'],
+                'amount' => $amount,
+                'currency' => $currency,
+                'date' => $transaction['date'] ?? $transaction['transactionDateTime'] ?? now(),
+                'description' => $transaction['description'] ?? null,
+                'notes' => $transaction['notes'] ?? null,
+                'category_name' => $transaction['category_name'] ?? null,
+                'source_account_id' => $transaction['source_id'] ?? null,
+                'source_account_name' => $transaction['source_name'] ?? $transaction['sourceAccountName'] ?? null,
+                'destination_account_id' => $transaction['destination_id'] ?? null,
+                'destination_account_name' => $transaction['destination_name'] ?? $transaction['destinationAccountName'] ?? null,
+                'tags' => $transaction['tags'] ?? null,
+                'budget_id' => $budgetId,
+                'user_id' => isset($transaction['source_id'])
+                    ? (Account::where('firefly_account_id', $transaction['source_id'])->first()?->user_id ?? 1)
+                    : 1,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to create pending transaction', ['error' => $e->getMessage()]);
+        }
     }
 }

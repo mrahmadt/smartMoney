@@ -90,5 +90,8 @@ PROMPT,
         // SMS Flood / Fraud Detection
         Setting::firstOrCreate(['key' => 'sms_flood_threshold_count'], ['value' => '3', 'description' => 'Alert when this many SMS arrive from the same sender within the time window']);
         Setting::firstOrCreate(['key' => 'sms_flood_threshold_minutes'], ['value' => '5', 'description' => 'Time window in minutes for SMS flood detection']);
+
+        // Transaction Review
+        Setting::firstOrCreate(['key' => 'auto_create_transaction'], ['value' => 'true', 'description' => 'Automatically create transactions in Firefly from parsed SMS. If false, transactions are queued for manual review.']);
     }
 }

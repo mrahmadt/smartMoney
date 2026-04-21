@@ -6,7 +6,7 @@
                 {{ __('menu.pending_category_reviews') }}
                 <span style="background: #f59e0b; color: white; border-radius: 9999px; padding: 1px 8px; font-size: 12px; margin-inline-start: 4px;">{{ count($this->reviews) }}</span>
             </p>
-            <a href="{{ \App\Filament\Pages\ReviewTransactions::getUrl() }}" style="font-size: 12px; color: #d97706; text-decoration: underline;">{{ __('menu.view_all') }}</a>
+            <a href="{{ \App\Filament\Pages\ReviewCategories::getUrl() }}" style="font-size: 12px; color: #d97706; text-decoration: underline;">{{ __('menu.view_all') }}</a>
         </div>
 
         @foreach($this->reviews as $review)
