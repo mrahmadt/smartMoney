@@ -170,7 +170,6 @@ class Transaction extends Model
         }
 
         $accountResult = Account::findBySenderAndShortcode(senderName: $this->SMS_sender->sender, shortcode: $myShortcode);
-
         // Transfer fallback: if source side didn't resolve, try the destination side as my account (incoming transfer)
         if (! $accountResult && $transaction['type'] === 'transfer' && $mySide === 'source' && $transaction['destinationAccountNumber'] !== '') {
             $accountResult = Account::findBySenderAndShortcode(senderName: $this->SMS_sender->sender, shortcode: $transaction['destinationAccountNumber']);
@@ -199,14 +198,19 @@ class Transaction extends Model
         if ($mySide === 'source') {
             $otherName = $transaction['destinationAccountName'];
             $otherNumber = $transaction['destinationAccountNumber'];
+            // if(isset($transaction['description']) && $transaction['description'] !== '') {
+            //     $otherName = $transaction['description'];
+            // }
         } else {
             $otherName = $transaction['sourceAccountName'];
             $otherNumber = $transaction['sourceAccountNumber'];
+            // if(isset($transaction['description']) && $transaction['description'] !== '') {
+            //     $otherName = $transaction['description'];
+            // }
         }
 
         if ($otherName === '' && $otherNumber === '') {
             $output['error'] = 'Other party name and number cannot both be empty';
-
             return $output;
         }
 
@@ -320,6 +324,17 @@ class Transaction extends Model
         unset($transaction['destinationAccountName']);
         if (! $transaction['tags']) {
             unset($transaction['tags']);
+        }
+        // Transfer type correction: Firefly requires both sides to be asset accounts for transfers.
+        // If one side is a name (not an ID), it's an expense/revenue account, so adjust the type.
+        if (($transaction['type'] ?? '') === 'transfer') {
+            $hasSourceId = ! empty($transaction['source_id']);
+            $hasDestId = ! empty($transaction['destination_id']);
+            if ($hasSourceId && ! $hasDestId) {
+                $transaction['type'] = 'withdrawal';
+            } elseif (! $hasSourceId && $hasDestId) {
+                $transaction['type'] = 'deposit';
+            }
         }
 
         if ($dryRun) {
