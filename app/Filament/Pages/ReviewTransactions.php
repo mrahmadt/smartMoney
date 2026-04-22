@@ -180,6 +180,7 @@ class ReviewTransactions extends Page implements HasTable
         if ($record->sms_id) {
             SMS::where('id', $record->sms_id)->update([
                 'is_processed' => true,
+                'is_valid' => true,
                 'transaction_id' => $result['transaction_id'],
             ]);
         }

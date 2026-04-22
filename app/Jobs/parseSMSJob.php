@@ -255,6 +255,7 @@ class parseSMSJob implements ShouldQueue
             echo 'Transaction created successfully with ID: '.$status['transaction_id'];
             $this->sms->update([
                 'is_processed' => true,
+                'is_valid' => true,
                 'transaction_id' => $status['transaction_id'],
             ]);
 
