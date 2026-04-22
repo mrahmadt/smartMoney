@@ -105,7 +105,7 @@ class Transaction extends Model
         $transaction['fees'] = str_replace(',', '', $transaction['fees']);
 
         if (($transaction['fees'] != '' && ! is_numeric($transaction['fees']))) {
-            $output['error'] = 'Invalid fees'.' '.$transaction['fees'];
+            $output['error'] = 'Invalid fees' . ' ' . $transaction['fees'];
 
             return $output;
         } elseif ($transaction['fees'] <= 0 || $transaction['fees'] == '') {
@@ -329,30 +329,144 @@ class Transaction extends Model
             return $output;
         }
 
-        $result = $this->fireflyIII->newTransaction($transaction);
+        $result = self::callFireflyAPI($transaction);
+        $result['budget_id'] = $transaction['budget_id'] ?? null;
 
-        if (isset($result->exception) || isset($result->errors) || isset($result->message)) {
-            $errorParts = [];
-            if (isset($result->message)) {
-                $errorParts[] = $result->message;
+        return $result;
+    }
+
+    /**
+     * Submit a reviewed/edited transaction to Firefly III.
+     * Handles account resolution (ID vs name), currency conversion, and API call.
+     *
+     * @param  array  $data  Form data with keys: type, amount, currency, date, description, notes,
+     *                       category_name, tags, budget_id, source_account, destination_account
+     * @return array{success: bool, error: ?string, transaction_id: ?int, attributes: ?object}
+     */
+    public static function submitToFirefly(array $data): array
+    {
+        $output = [
+            'success' => false,
+            'error' => null,
+            'transaction_id' => null,
+            'attributes' => null,
+        ];
+
+        $accounts = Account::pluck('firefly_account_name', 'firefly_account_id')->toArray();
+
+        $fireflyTransaction = [
+            'type' => $data['type'],
+            'amount' => (float) $data['amount'],
+            'currency_code' => strtoupper($data['currency']),
+            'date' => $data['date'] instanceof \DateTimeInterface ? $data['date']->toIso8601String() : $data['date'],
+        ];
+
+        if (! empty($data['description'])) {
+            $fireflyTransaction['description'] = $data['description'];
+        }
+        if (! empty($data['notes'])) {
+            $fireflyTransaction['notes'] = $data['notes'];
+        }
+        if (! empty($data['category_name'])) {
+            $fireflyTransaction['category_name'] = $data['category_name'];
+        }
+        if (! empty($data['tags'])) {
+            $fireflyTransaction['tags'] = $data['tags'];
+        }
+        if (! empty($data['budget_id'])) {
+            $fireflyTransaction['budget_id'] = (int) $data['budget_id'];
+        }
+
+        // Resolve source: numeric = account ID, string = account name
+        $sourceValue = $data['source_account'] ?? null;
+        $sourceAccountModel = null;
+        if ($sourceValue && is_numeric($sourceValue) && isset($accounts[(int) $sourceValue])) {
+            $fireflyTransaction['source_id'] = (int) $sourceValue;
+            $sourceAccountModel = Account::where('firefly_account_id', (int) $sourceValue)->first();
+        } elseif (! empty($sourceValue)) {
+            $fireflyTransaction['source_name'] = $sourceValue;
+        }
+
+        // Resolve destination: numeric = account ID, string = account name
+        $destValue = $data['destination_account'] ?? null;
+        if ($destValue && is_numeric($destValue) && isset($accounts[(int) $destValue])) {
+            $fireflyTransaction['destination_id'] = (int) $destValue;
+        } elseif (! empty($destValue)) {
+            $fireflyTransaction['destination_name'] = $destValue;
+        }
+        $txCurrency = strtoupper($data['currency']);
+        unset($fireflyTransaction['currency']);
+
+        // Currency conversion: if transaction currency differs from source account currency
+        if ($sourceAccountModel && ! empty($sourceAccountModel->currency_code)) {
+            $accountCurrency = strtoupper($sourceAccountModel->currency_code);
+            $fireflyTransaction['currency_code'] = $accountCurrency;
+
+            if ($txCurrency !== $accountCurrency) {
+                $convertedAmount = Currency::exchangeRate(
+                    amount: (float) $data['amount'],
+                    from: $txCurrency,
+                    to: $accountCurrency,
+                );
+                if ($convertedAmount === false) {
+                    $output['error'] = 'Failed to convert amount to account currency';
+
+                    return $output;
+                }
+                $fireflyTransaction['amount'] = $convertedAmount;
+                $fireflyTransaction['foreign_currency_code'] = $txCurrency;
+                $fireflyTransaction['foreign_amount'] = (float) $data['amount'];
             }
-            if (isset($result->errors)) {
-                foreach ((array) $result->errors as $field => $messages) {
-                    foreach ((array) $messages as $msg) {
-                        $errorParts[] = "[{$field}] {$msg}";
+        }
+        return self::callFireflyAPI($fireflyTransaction);
+    }
+
+    /**
+     * Call Firefly III API to create a new transaction.
+     * Shared by createTransaction() and submitToFirefly().
+     *
+     * @param  array  $transaction  Ready-to-send Firefly transaction payload
+     * @return array{success: bool, error: ?string, transaction_id: ?int, attributes: ?object}
+     */
+    private static function callFireflyAPI(array $transaction): array
+    {
+        $output = [
+            'success' => false,
+            'error' => null,
+            'transaction_id' => null,
+            'attributes' => null,
+        ];
+
+        try {
+            $firefly = new fireflyIII;
+            $result = $firefly->newTransaction($transaction);
+
+            if (isset($result->exception) || isset($result->errors) || isset($result->message)) {
+                $errorParts = [];
+                if (isset($result->message)) {
+                    $errorParts[] = $result->message;
+                }
+                if (isset($result->errors)) {
+                    foreach ((array) $result->errors as $field => $messages) {
+                        foreach ((array) $messages as $msg) {
+                            $errorParts[] = "[{$field}] {$msg}";
+                        }
                     }
                 }
-            }
-            $output['error'] = implode(' | ', $errorParts) ?: 'Unknown error';
+                $output['error'] = implode(' | ', $errorParts) ?: 'Unknown error';
 
-            return $output;
-        } elseif (isset($result->data->id)) {
-            $output['success'] = true;
-            $output['transaction_id'] = $result->data->id;
-            $output['attributes'] = $result->data->attributes->transactions[0];
-            $output['budget_id'] = $transaction['budget_id'] ?? null;
-        } else {
-            $output['error'] = 'Unknown error';
+                return $output;
+            }
+
+            if (isset($result->data->id)) {
+                $output['success'] = true;
+                $output['transaction_id'] = $result->data->id;
+                $output['attributes'] = $result->data->attributes->transactions[0];
+            } else {
+                $output['error'] = 'Unknown error from Firefly';
+            }
+        } catch (\Exception $e) {
+            $output['error'] = $e->getMessage();
         }
 
         return $output;
@@ -491,7 +605,7 @@ class Transaction extends Model
 
         $total_pages = 10;
         $today = date('Y-m-d');
-        $maxMonths = strtotime('-'.Setting::getInt('average_transactions_months', 3).' months', strtotime($today));
+        $maxMonths = strtotime('-' . Setting::getInt('average_transactions_months', 3) . ' months', strtotime($today));
         $xMonthsAgo = date('Y-m-d', $maxMonths);
 
         $fireflyIII = new fireflyIII;
@@ -599,8 +713,11 @@ class Transaction extends Model
 
         // Count today's transactions for this category
         $todayTransactions = $firefly->getTransactions(
-            start: $date, end: $date, type: 'withdrawal',
-            filter: $filter, limit: 200
+            start: $date,
+            end: $date,
+            type: 'withdrawal',
+            filter: $filter,
+            limit: 200
         );
         $todayCount = is_array($todayTransactions) ? count($todayTransactions) : 0;
         if ($todayCount < 2) {
@@ -611,8 +728,12 @@ class Transaction extends Model
         $totalCount = 0;
         for ($page = 1; $page <= 10; $page++) {
             $response = $firefly->getTransactions(
-                start: $date, end: $startDate, type: 'withdrawal',
-                filter: $filter, limit: 500, page: $page
+                start: $date,
+                end: $startDate,
+                type: 'withdrawal',
+                filter: $filter,
+                limit: 500,
+                page: $page
             );
             if (! $response) {
                 break;
@@ -653,8 +774,11 @@ class Transaction extends Model
         }
 
         $todayTransactions = $firefly->getTransactions(
-            start: $date, end: $date, type: 'withdrawal',
-            filter: $filter, limit: 200
+            start: $date,
+            end: $date,
+            type: 'withdrawal',
+            filter: $filter,
+            limit: 200
         );
         $todayCount = is_array($todayTransactions) ? count($todayTransactions) : 0;
         if ($todayCount < 2) {
@@ -665,8 +789,12 @@ class Transaction extends Model
         $totalCount = 0;
         for ($page = 1; $page <= 10; $page++) {
             $response = $firefly->getTransactions(
-                start: $date, end: $startDate, type: 'withdrawal',
-                filter: $filter, limit: 500, page: $page
+                start: $date,
+                end: $startDate,
+                type: 'withdrawal',
+                filter: $filter,
+                limit: 500,
+                page: $page
             );
             if (! $response) {
                 break;
@@ -718,8 +846,12 @@ class Transaction extends Model
         $currentTotal = 0;
         for ($page = 1; $page <= 10; $page++) {
             $response = $firefly->getTransactions(
-                start: $currentEnd, end: $currentStart, type: 'withdrawal',
-                filter: $filter, limit: 500, page: $page
+                start: $currentEnd,
+                end: $currentStart,
+                type: 'withdrawal',
+                filter: $filter,
+                limit: 500,
+                page: $page
             );
             if (! $response) {
                 break;
@@ -736,14 +868,18 @@ class Transaction extends Model
         // Past periods totals
         $pastTotals = [];
         for ($i = 1; $i <= $periodsBack; $i++) {
-            $pEnd = date('Y-m-d', strtotime('-'.($i * $periodDays).' days', strtotime($currentEnd)));
-            $pStart = date('Y-m-d', strtotime('-'.$periodDays.' days', strtotime($pEnd)));
+            $pEnd = date('Y-m-d', strtotime('-' . ($i * $periodDays) . ' days', strtotime($currentEnd)));
+            $pStart = date('Y-m-d', strtotime('-' . $periodDays . ' days', strtotime($pEnd)));
 
             $periodTotal = 0;
             for ($page = 1; $page <= 10; $page++) {
                 $response = $firefly->getTransactions(
-                    start: $pEnd, end: $pStart, type: 'withdrawal',
-                    filter: $filter, limit: 500, page: $page
+                    start: $pEnd,
+                    end: $pStart,
+                    type: 'withdrawal',
+                    filter: $filter,
+                    limit: 500,
+                    page: $page
                 );
                 if (! $response) {
                     break;
@@ -755,7 +891,7 @@ class Transaction extends Model
             $pastTotals[] = $periodTotal;
         }
 
-        $pastTotals = array_filter($pastTotals, fn ($t) => $t > 0);
+        $pastTotals = array_filter($pastTotals, fn($t) => $t > 0);
         if (count($pastTotals) == 0) {
             return false;
         }

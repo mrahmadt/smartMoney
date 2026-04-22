@@ -5,7 +5,6 @@ namespace App\Filament\Pages;
 use App\Models\PendingTransaction;
 use App\Models\SMS;
 use App\Models\Transaction;
-use App\Services\fireflyIII;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -15,7 +14,6 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 
 class ReviewTransactions extends Page implements HasTable
 {
@@ -151,115 +149,52 @@ class ReviewTransactions extends Page implements HasTable
 
     protected function submitToFirefly(PendingTransaction $record): void
     {
-        $fireflyTransaction = [
+        $data = [
             'type' => $record->type,
-            'amount' => (float) $record->amount,
-            'currency_code' => $record->currency,
-            'date' => $record->date instanceof \DateTimeInterface ? $record->date->toIso8601String() : $record->date,
+            'amount' => $record->amount,
+            'currency' => $record->currency,
+            'date' => $record->date,
+            'description' => $record->description,
+            'notes' => $record->notes,
+            'category_name' => $record->category_name,
+            'source_account' => $record->source_account_id ?? $record->source_account_name,
+            'destination_account' => $record->destination_account_id ?? $record->destination_account_name,
+            'tags' => $record->tags ?? [],
+            'budget_id' => $record->budget_id,
         ];
 
-        if (! empty($record->description)) {
-            $fireflyTransaction['description'] = $record->description;
-        }
-        if (! empty($record->notes)) {
-            $fireflyTransaction['notes'] = $record->notes;
-        }
-        if (! empty($record->category_name)) {
-            $fireflyTransaction['category_name'] = $record->category_name;
-        }
-        if (! empty($record->tags)) {
-            $fireflyTransaction['tags'] = $record->tags;
-        }
-        if (! empty($record->budget_id)) {
-            $fireflyTransaction['budget_id'] = (int) $record->budget_id;
-        }
+        $result = Transaction::submitToFirefly($data);
 
-        // ID takes priority over name
-        if ($record->source_account_id) {
-            $fireflyTransaction['source_id'] = (int) $record->source_account_id;
-        } elseif (! empty($record->source_account_name)) {
-            $fireflyTransaction['source_name'] = $record->source_account_name;
-        }
-
-        if ($record->destination_account_id) {
-            $fireflyTransaction['destination_id'] = (int) $record->destination_account_id;
-        } elseif (! empty($record->destination_account_name)) {
-            $fireflyTransaction['destination_name'] = $record->destination_account_name;
-        }
-
-        try {
-            $firefly = new fireflyIII;
-            $result = $firefly->newTransaction($fireflyTransaction);
-
-            if (isset($result->exception) || isset($result->errors) || isset($result->message)) {
-                $errorParts = [];
-                if (isset($result->message)) {
-                    $errorParts[] = $result->message;
-                }
-                if (isset($result->errors)) {
-                    foreach ((array) $result->errors as $field => $messages) {
-                        foreach ((array) $messages as $msg) {
-                            $errorParts[] = "[{$field}] {$msg}";
-                        }
-                    }
-                }
-                $errorMsg = implode(' | ', $errorParts) ?: 'Unknown error';
-
-                // Update the record with the new error
-                $record->update(['error_message' => $errorMsg, 'reason' => 'error']);
-
-                Notification::make()
-                    ->title(__('menu.transaction_submit_failed'))
-                    ->body($errorMsg)
-                    ->danger()
-                    ->send();
-
-                return;
-            }
-
-            if (isset($result->data->id)) {
-                $transactionId = $result->data->id;
-                $attributes = $result->data->attributes->transactions[0];
-
-                // Update SMS record
-                if ($record->sms_id) {
-                    SMS::where('id', $record->sms_id)->update([
-                        'is_processed' => true,
-                        'transaction_id' => $transactionId,
-                    ]);
-                }
-
-                // Run post-creation actions
-                Transaction::postCreationActions(
-                    attributes: $attributes,
-                    transaction: $record->toArray(),
-                    smsId: $record->sms_id,
-                );
-
-                $record->delete();
-
-                Notification::make()
-                    ->title(__('menu.transaction_submitted'))
-                    ->success()
-                    ->send();
-            } else {
-                $record->update(['error_message' => 'Unknown error from Firefly', 'reason' => 'error']);
-
-                Notification::make()
-                    ->title(__('menu.transaction_submit_failed'))
-                    ->danger()
-                    ->send();
-            }
-        } catch (\Exception $e) {
-            Log::error('Failed to submit pending transaction', ['error' => $e->getMessage(), 'record_id' => $record->id]);
-
-            $record->update(['error_message' => $e->getMessage(), 'reason' => 'error']);
+        if (! $result['success']) {
+            $record->update(['error_message' => $result['error'], 'reason' => 'error']);
 
             Notification::make()
                 ->title(__('menu.transaction_submit_failed'))
-                ->body($e->getMessage())
+                ->body($result['error'])
                 ->danger()
                 ->send();
+
+            return;
         }
+
+        if ($record->sms_id) {
+            SMS::where('id', $record->sms_id)->update([
+                'is_processed' => true,
+                'transaction_id' => $result['transaction_id'],
+            ]);
+        }
+
+        Transaction::postCreationActions(
+            attributes: $result['attributes'],
+            transaction: $record->toArray(),
+            smsId: $record->sms_id,
+        );
+
+        $record->delete();
+
+        Notification::make()
+            ->title(__('menu.transaction_submitted'))
+            ->success()
+            ->send();
     }
 }

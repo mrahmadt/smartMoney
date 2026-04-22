@@ -22,7 +22,6 @@ use Filament\Schemas\Components\Actions as SchemaActions;
 use Filament\Schemas\Components\Form;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 
 class EditPendingTransaction extends Page implements HasForms
 {
@@ -176,118 +175,40 @@ class EditPendingTransaction extends Page implements HasForms
         $data = $this->form->getState();
         $record = $this->pendingTransaction;
 
-        $fireflyTransaction = [
-            'type' => $data['type'],
-            'amount' => (float) $data['amount'],
-            'currency_code' => $data['currency'],
-            'date' => $data['date'] instanceof \DateTimeInterface ? $data['date']->toIso8601String() : $data['date'],
-        ];
+        $result = Transaction::submitToFirefly($data);
 
-        if (! empty($data['description'])) {
-            $fireflyTransaction['description'] = $data['description'];
-        }
-        if (! empty($data['notes'])) {
-            $fireflyTransaction['notes'] = $data['notes'];
-        }
-        if (! empty($data['category_name'])) {
-            $fireflyTransaction['category_name'] = $data['category_name'];
-        }
-        if (! empty($data['tags'])) {
-            $fireflyTransaction['tags'] = $data['tags'];
-        }
-        if (! empty($data['budget_id'])) {
-            $fireflyTransaction['budget_id'] = (int) $data['budget_id'];
-        }
-
-        // Resolve source: numeric = account ID, string = account name
-        $accounts = Account::pluck('firefly_account_name', 'firefly_account_id')->toArray();
-
-        $sourceValue = $data['source_account'] ?? null;
-        if ($sourceValue && is_numeric($sourceValue) && isset($accounts[(int) $sourceValue])) {
-            $fireflyTransaction['source_id'] = (int) $sourceValue;
-        } elseif (! empty($sourceValue)) {
-            $fireflyTransaction['source_name'] = $sourceValue;
-        }
-
-        $destValue = $data['destination_account'] ?? null;
-        if ($destValue && is_numeric($destValue) && isset($accounts[(int) $destValue])) {
-            $fireflyTransaction['destination_id'] = (int) $destValue;
-        } elseif (! empty($destValue)) {
-            $fireflyTransaction['destination_name'] = $destValue;
-        }
-
-        try {
-            $firefly = new fireflyIII;
-            $result = $firefly->newTransaction($fireflyTransaction);
-
-            if (isset($result->exception) || isset($result->errors) || isset($result->message)) {
-                $errorParts = [];
-                if (isset($result->message)) {
-                    $errorParts[] = $result->message;
-                }
-                if (isset($result->errors)) {
-                    foreach ((array) $result->errors as $field => $messages) {
-                        foreach ((array) $messages as $msg) {
-                            $errorParts[] = "[{$field}] {$msg}";
-                        }
-                    }
-                }
-                $errorMsg = implode(' | ', $errorParts) ?: 'Unknown error';
-
-                $record->update(['error_message' => $errorMsg, 'reason' => 'error']);
-
-                Notification::make()
-                    ->title(__('menu.transaction_submit_failed'))
-                    ->body($errorMsg)
-                    ->danger()
-                    ->send();
-
-                return;
-            }
-
-            if (isset($result->data->id)) {
-                $transactionId = $result->data->id;
-                $attributes = $result->data->attributes->transactions[0];
-
-                if ($record->sms_id) {
-                    SMS::where('id', $record->sms_id)->update([
-                        'is_processed' => true,
-                        'transaction_id' => $transactionId,
-                    ]);
-                }
-
-                Transaction::postCreationActions(
-                    attributes: $attributes,
-                    transaction: $data,
-                    smsId: $record->sms_id,
-                );
-
-                $record->delete();
-
-                Notification::make()
-                    ->title(__('menu.transaction_submitted'))
-                    ->success()
-                    ->send();
-
-                $this->redirect(ReviewTransactions::getUrl());
-            } else {
-                $record->update(['error_message' => 'Unknown error from Firefly', 'reason' => 'error']);
-
-                Notification::make()
-                    ->title(__('menu.transaction_submit_failed'))
-                    ->danger()
-                    ->send();
-            }
-        } catch (\Exception $e) {
-            Log::error('Failed to submit pending transaction', ['error' => $e->getMessage(), 'record_id' => $record->id]);
-
-            $record->update(['error_message' => $e->getMessage(), 'reason' => 'error']);
+        if (! $result['success']) {
+            $record->update(['error_message' => $result['error'], 'reason' => 'error']);
 
             Notification::make()
                 ->title(__('menu.transaction_submit_failed'))
-                ->body($e->getMessage())
+                ->body($result['error'])
                 ->danger()
                 ->send();
+
+            return;
         }
+
+        if ($record->sms_id) {
+            SMS::where('id', $record->sms_id)->update([
+                'is_processed' => true,
+                'transaction_id' => $result['transaction_id'],
+            ]);
+        }
+
+        Transaction::postCreationActions(
+            attributes: $result['attributes'],
+            transaction: $data,
+            smsId: $record->sms_id,
+        );
+
+        $record->delete();
+
+        Notification::make()
+            ->title(__('menu.transaction_submitted'))
+            ->success()
+            ->send();
+
+        $this->redirect(ReviewTransactions::getUrl());
     }
 }
