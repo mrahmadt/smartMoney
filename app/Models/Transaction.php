@@ -157,7 +157,7 @@ class Transaction extends Model
         }
 
         if ($myShortcode === '') {
-            dd($transaction);
+            // dd($transaction);
             $output['error'] = 'My account number cannot be empty';
 
             return $output;
