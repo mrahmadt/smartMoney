@@ -64,7 +64,6 @@ class parseSMSJob implements ShouldQueue
             if (! $this->dryRun) {
                 SMS::processInvalidSMS(sms: $this->sms, errors: 'Not a valid bank transaction');
             }
-
             return;
         }
         $this->dryRunLog('info', 'SMS is a valid bank transaction');
@@ -138,7 +137,7 @@ class parseSMSJob implements ShouldQueue
                 if (isset($output['error']) && $output['error'] !== '') {
                     $this->dryRunLog('error', 'LLM error: '.$output['error']);
                     if (! $this->dryRun) {
-                        SMS::processInvalidSMS(sms: $this->sms, message: 'LLM error', errors: 'LLM error: '.$output['error'], keep: true);
+                        SMS::processInvalidSMS(sms: $this->sms, message: 'Invalid Transaction', errors: 'Invalid Transaction', keep: true);
                     }
 
                     return;
@@ -216,7 +215,6 @@ class parseSMSJob implements ShouldQueue
         if (! $autoCreate && ! $this->dryRun) {
             $transactionModel = new Transaction;
             $status = $transactionModel->createTransaction($transaction, $this->SMS_sender, true);
-
             if ($status['success']) {
                 $resolvedTransaction = $status['transaction'] ?? [];
                 $transaction['source_id'] = $resolvedTransaction['source_id'] ?? null;
@@ -231,9 +229,9 @@ class parseSMSJob implements ShouldQueue
                 $this->createPendingTransaction($transaction, 'manual_review');
                 $this->sms->update(['is_processed' => true]);
             } else {
+                $this->createPendingTransaction($transaction, 'error', $status['error'] ?? 'Unknown error');
                 SMS::processInvalidSMS(sms: $this->sms, message: 'Failed validation for review', errors: 'Validation failed: '.($status['error'] ?? 'Unknown'), keep: true);
             }
-
             return;
         }
 
@@ -267,9 +265,7 @@ class parseSMSJob implements ShouldQueue
         } else {
             // Create a pending transaction for review so the user can fix and retry
             $this->createPendingTransaction($transaction, 'error', $status['error'] ?? 'Unknown error');
-
             SMS::processInvalidSMS(sms: $this->sms, message: 'Failed to create transaction', errors: 'Failed to create transaction: '.$status['error'].' '.print_r($transaction, true), keep: true);
-
             return;
         }
     }
