@@ -174,7 +174,7 @@ class EditTransactions extends Page implements HasForms
         $this->categories = Category::all()
             ->mapWithKeys(fn (Category $c) => [$c->name => $c->translatedName()])
             ->toArray();
-
+        dd($transaction);
         return $transaction;
     }
 }
