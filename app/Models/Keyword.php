@@ -55,14 +55,32 @@ class Keyword extends Model
         return $query->pluck('keyword')->toArray();
     }
 
+    public static function returnActiveReplaceKeywords($is_regularExp = true, ?int $senderId = null): array
+    {
+        $query = self::where('keyword_type', 'replace')
+            ->where('is_regularExp', $is_regularExp)
+            ->where('is_active', true);
+
+        if ($senderId !== null) {
+            $query->where(function ($q) use ($senderId) {
+                $q->where('sender_id', $senderId)
+                    ->orWhereNull('sender_id');
+            });
+        } else {
+            $query->whereNull('sender_id');
+        }
+
+        return $query->pluck('replaceWith', 'keyword')->toArray();
+    }
+
     public static function regex_replaceWith(?int $senderId = null): array
     {
-        return self::returnActiveKeywordsByType('replace', true, $senderId);
+        return self::returnActiveReplaceKeywords(true, $senderId);
     }
 
     public static function str_replaceWith(?int $senderId = null): array
     {
-        return self::returnActiveKeywordsByType('replace', false, $senderId);
+        return self::returnActiveReplaceKeywords(false, $senderId);
     }
 
     public static function regex_phoneNumbers(?int $senderId = null): array

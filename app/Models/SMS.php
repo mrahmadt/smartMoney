@@ -25,7 +25,7 @@ class SMS extends Model
 
     public static function generateHash($sender, $message): string
     {
-        return md5(strtolower($sender) . $message);
+        return md5(strtolower($sender).$message);
     }
 
     public static function isDuplicate($sender, $message): bool
@@ -55,44 +55,90 @@ class SMS extends Model
     }
 
     // PreClean SMS before any process
-    public static function preClean($message)
+    public static function preClean($message, ?int $senderId = null)
     {
+        $debug = config('app.debug');
+
         // To Arabic Numbers
         $message = str_replace(['١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'], ['1', '2', '3', '4', '5', '6', '7', '8', '9'], $message);
 
+        // Replace keywords (regex)
+        foreach (Keyword::regex_replaceWith($senderId) as $re => $replacement) {
+            $before = $message;
+            $message = preg_replace($re, $replacement ?? '', $message);
+            if ($debug && $before !== $message) {
+                Log::debug('preClean: replace regex matched', ['regex' => $re, 'replaceWith' => $replacement]);
+            }
+        }
+
+        // Replace keywords (string)
+        foreach (Keyword::str_replaceWith($senderId) as $str => $replacement) {
+            $before = $message;
+            $message = str_replace($str, $replacement ?? '', $message);
+            if ($debug && $before !== $message) {
+                Log::debug('preClean: replace string matched', ['string' => $str, 'replaceWith' => $replacement]);
+            }
+        }
+
         // Remove phone numbers
-        foreach (Keyword::regex_phoneNumbers() as $re) {
+        foreach (Keyword::regex_phoneNumbers($senderId) as $re) {
+            $before = $message;
             $message = preg_replace($re, '', $message);
+            if ($debug && $before !== $message) {
+                Log::debug('preClean: phone regex matched', ['regex' => $re]);
+            }
         }
 
         // Remove Passcodes
-        foreach (Keyword::regex_passcodes() as $re) {
+        foreach (Keyword::regex_passcodes($senderId) as $re) {
+            $before = $message;
             $message = preg_replace($re, '', $message);
+            if ($debug && $before !== $message) {
+                Log::debug('preClean: passcode regex matched', ['regex' => $re]);
+            }
         }
 
         // Remove Misc
-        foreach (Keyword::regex_misc() as $re) {
+        foreach (Keyword::regex_misc($senderId) as $re) {
+            $before = $message;
             $message = preg_replace($re, '', $message);
+            if ($debug && $before !== $message) {
+                Log::debug('preClean: misc regex matched', ['regex' => $re]);
+            }
         }
 
         // Remove Date
-        foreach (Keyword::regex_date() as $re) {
+        foreach (Keyword::regex_date($senderId) as $re) {
+            $before = $message;
             $message = preg_replace($re, '', $message);
+            if ($debug && $before !== $message) {
+                Log::debug('preClean: date regex matched', ['regex' => $re]);
+            }
         }
 
         // Remove URLs
-        foreach (Keyword::regex_urls() as $re) {
+        foreach (Keyword::regex_urls($senderId) as $re) {
+            $before = $message;
             $message = preg_replace($re, '', $message);
+            if ($debug && $before !== $message) {
+                Log::debug('preClean: url regex matched', ['regex' => $re]);
+            }
         }
-
-        // $message = preg_replace('/(\d+%|%\d+)/m', '', $message);
 
         // remove breaks
-        foreach (Keyword::regex_breaks() as $re) {
+        foreach (Keyword::regex_breaks($senderId) as $re) {
+            $before = $message;
             $message = preg_replace($re, '', $message);
+            if ($debug && $before !== $message) {
+                Log::debug('preClean: break regex matched', ['regex' => $re]);
+            }
         }
-        foreach (Keyword::non_regex_breaks() as $re) {
+        foreach (Keyword::non_regex_breaks($senderId) as $re) {
+            $before = $message;
             $message = str_replace($re, '', $message);
+            if ($debug && $before !== $message) {
+                Log::debug('preClean: break string matched', ['string' => $re]);
+            }
         }
         // remove double spaces
         $message = preg_replace('/\s{2,}/', ' ', $message);
@@ -112,25 +158,29 @@ class SMS extends Model
         // No numbers
         if (! preg_match('~[0-9]+~', $message)) {
             Log::debug('SMS ignored due to no numbers', ['message' => $message]);
+
             return false;
         }
 
         // Tiny text
         if (mb_strlen($message) <= Setting::getInt('parsesms_min_sms_length', 30)) {
             Log::debug('SMS ignored due to short length', ['message' => $message]);
+
             return false;
         }
 
         foreach (Keyword::regex_ignoreSMS($senderId) as $re) {
             if (preg_match($re, $message)) {
-                Log::debug('SMS ignored due to regex: ' . $re, ['message' => $message]);
+                Log::debug('SMS ignored due to regex: '.$re, ['message' => $message]);
+
                 return false;
             }
         }
 
         foreach (Keyword::str_ignoreSMS($senderId) as $keyword) {
             if (stripos($message, $keyword) !== false) {
-                Log::debug('SMS ignored due to keyword: ' . $keyword, ['message' => $message]);
+                Log::debug('SMS ignored due to keyword: '.$keyword, ['message' => $message]);
+
                 return false;
             }
         }
@@ -182,8 +232,8 @@ class SMS extends Model
                         }
                     }
                     // $message = $sms->sender.': '.($message ?: 'Invalid SMS');
-                    $sms_text = $sms->sender . ': ' . mb_substr($sms->message ?? '', 0, 200);
-                    $message = ($message ?: 'Invalid SMS') . "\n\n" . $sms_text;
+                    $sms_text = $sms->sender.': '.mb_substr($sms->message ?? '', 0, 200);
+                    $message = ($message ?: 'Invalid SMS')."\n\n".$sms_text;
                     app()->setLocale($user->language ?? 'en');
                     Alert::createAlert(
                         title: __('alert.invalid_sms_title'),

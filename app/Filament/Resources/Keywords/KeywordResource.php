@@ -13,6 +13,8 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -62,7 +64,6 @@ class KeywordResource extends Resource
                     ->required(),
                 Toggle::make('is_regularExp')
                     ->required(),
-                TextInput::make('replaceWith'),
                 Select::make('keyword_type')
                     ->options([
                         'phone' => 'Phone',
@@ -75,7 +76,11 @@ class KeywordResource extends Resource
                         'replace' => 'Replace',
                     ])
                     ->default('ignore')
-                    ->required(),
+                    ->required()
+                    ->live()
+                    ->afterStateUpdated(fn (Set $set, ?string $state) => $state !== 'replace' ? $set('replaceWith', null) : null),
+                TextInput::make('replaceWith')
+                    ->visible(fn (Get $get): bool => $get('keyword_type') === 'replace'),
                 Toggle::make('is_active')
                     ->default(true)
                     ->required(),

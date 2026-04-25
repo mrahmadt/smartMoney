@@ -66,8 +66,9 @@ class SMSController extends Controller
             return response()->json(['filter' => true, 'error' => 'duplicate'], 200);
         }
 
-        $stripedMessage = SMS::preClean($message);
-        $status = SMS::isValidBankTransaction($stripedMessage);
+        $smsSender = SMSSender::where('sender', $sender)->where('is_active', true)->first();
+        $stripedMessage = SMS::preClean($message, $smsSender?->id);
+        $status = SMS::isValidBankTransaction($stripedMessage, false, $smsSender?->id);
         if ($status == false) {
             if (Setting::getBool('parsesms_store_invalid_sms', false)) {
                 $sms = new SMS;

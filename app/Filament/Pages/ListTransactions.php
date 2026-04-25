@@ -106,7 +106,11 @@ class ListTransactions extends Page implements HasTable
 
                         return number_format($amount, 0, '.', ',');
                     })
-                    ->color(fn ($record) => ($record['type'] === 'withdrawal' || $record['type'] === 'transfer') ? 'danger' : 'success'),
+                    ->color(fn ($record) => match ($record['type']) {
+                        'withdrawal' => 'danger',
+                        'transfer' => null,
+                        default => 'success',
+                    }),
                 TextColumn::make('date')->label(__('widget.date'))->formatStateUsing(fn ($state) => date('D M-d g:ia', strtotime($state)))->color('primary'),
                 TextColumn::make('category_name')->label(__('widget.category'))
                     ->formatStateUsing(function ($state) {
