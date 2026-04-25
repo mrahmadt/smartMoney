@@ -53,6 +53,7 @@ PROMPT,
 
         Setting::firstOrCreate(['key' => 'parsesms_enabled'], ['value' => 'true', 'description' => 'Enable or disable SMS parsing functionality']);
         Setting::firstOrCreate(['key' => 'parsesms_store_invalid_sms'], ['value' => 'true', 'description' => 'Store invalid SMS in DB for debugging and auditing']);
+        Setting::firstOrCreate(['key' => 'parsesms_alert_invalid_sms'], ['value' => 'true', 'description' => 'Alert user when an invalid SMS is detected']);
         Setting::firstOrCreate(['key' => 'parsesms_min_sms_length'], ['value' => '30', 'description' => 'Minimum SMS length to be considered a valid transaction']);
         Setting::firstOrCreate(['key' => 'parsesms_regex_enabled'], ['value' => 'true', 'description' => 'Enable SMS parsing via regex (SMSRegularExp). If false, skip regex and use AI only.']);
         Setting::firstOrCreate(['key' => 'parsesms_failback_ai'], ['value' => 'true', 'description' => 'Use AI as fallback when regex parsing fails']);

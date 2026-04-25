@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Log; 
+use Illuminate\Support\Facades\Log;
 
 class SMS extends Model
 {
@@ -25,7 +25,7 @@ class SMS extends Model
 
     public static function generateHash($sender, $message): string
     {
-        return md5(strtolower($sender).$message);
+        return md5(strtolower($sender) . $message);
     }
 
     public static function isDuplicate($sender, $message): bool
@@ -123,14 +123,14 @@ class SMS extends Model
 
         foreach (Keyword::regex_ignoreSMS($senderId) as $re) {
             if (preg_match($re, $message)) {
-                Log::debug('SMS ignored due to regex: '.$re, ['message' => $message]);
+                Log::debug('SMS ignored due to regex: ' . $re, ['message' => $message]);
                 return false;
             }
         }
 
         foreach (Keyword::str_ignoreSMS($senderId) as $keyword) {
             if (stripos($message, $keyword) !== false) {
-                Log::debug('SMS ignored due to keyword: '.$keyword, ['message' => $message]);
+                Log::debug('SMS ignored due to keyword: ' . $keyword, ['message' => $message]);
                 return false;
             }
         }
@@ -172,30 +172,32 @@ class SMS extends Model
                 $sms->errors = $errors;
             }
             $sms->save();
-            $user = User::find(1);
-            if ($user) {
-                if ($message == null && $errors) {
-                    $message = is_array($errors) ? implode(', ', $errors) : $errors;
-                    if (mb_strlen($message) > 100) {
-                        $message = mb_substr($message, 0, 100);
+            if (Setting::getBool('parsesms_alert_invalid_sms', true)) {
+                $user = User::find(1);
+                if ($user) {
+                    if ($message == null && $errors) {
+                        $message = is_array($errors) ? implode(', ', $errors) : $errors;
+                        if (mb_strlen($message) > 100) {
+                            $message = mb_substr($message, 0, 100);
+                        }
                     }
+                    // $message = $sms->sender.': '.($message ?: 'Invalid SMS');
+                    $sms_text = $sms->sender . ': ' . mb_substr($sms->message ?? '', 0, 200);
+                    $message = ($message ?: 'Invalid SMS') . "\n\n" . $sms_text;
+                    app()->setLocale($user->language ?? 'en');
+                    Alert::createAlert(
+                        title: __('alert.invalid_sms_title'),
+                        message: $message,
+                        user: $user,
+                        topic: 'Invalid SMS',
+                        data: [
+                            'sms_id' => $sms->id,
+                            'sender' => $sms->sender,
+                            'sms_message' => mb_substr($sms->message ?? '', 0, 200),
+                            'errors' => ($errors ? json_encode($errors) : 'Unknown'),
+                        ]
+                    );
                 }
-                // $message = $sms->sender.': '.($message ?: 'Invalid SMS');
-                $sms_text = $sms->sender.': '. mb_substr($sms->message ?? '', 0, 200);
-                $message = ($message ?: 'Invalid SMS'). "\n\n" .$sms_text;
-                app()->setLocale($user->language ?? 'en');
-                Alert::createAlert(
-                    title: __('alert.invalid_sms_title'),
-                    message: $message,
-                    user: $user,
-                    topic: 'Invalid SMS',
-                    data: [
-                        'sms_id' => $sms->id,
-                        'sender' => $sms->sender,
-                        'sms_message' => mb_substr($sms->message ?? '', 0, 200),
-                        'errors' => ($errors ? json_encode($errors) : 'Unknown'),
-                    ]
-                );
             }
         } else {
             $sms->delete();
