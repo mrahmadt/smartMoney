@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log; 
 
 class SMS extends Model
 {
@@ -110,22 +111,26 @@ class SMS extends Model
 
         // No numbers
         if (! preg_match('~[0-9]+~', $message)) {
+            Log::debug('SMS ignored due to no numbers', ['message' => $message]);
             return false;
         }
 
         // Tiny text
         if (mb_strlen($message) <= Setting::getInt('parsesms_min_sms_length', 30)) {
+            Log::debug('SMS ignored due to short length', ['message' => $message]);
             return false;
         }
 
         foreach (Keyword::regex_ignoreSMS($senderId) as $re) {
             if (preg_match($re, $message)) {
+                Log::debug('SMS ignored due to regex: '.$re, ['message' => $message]);
                 return false;
             }
         }
 
         foreach (Keyword::str_ignoreSMS($senderId) as $keyword) {
             if (stripos($message, $keyword) !== false) {
+                Log::debug('SMS ignored due to keyword: '.$keyword, ['message' => $message]);
                 return false;
             }
         }
