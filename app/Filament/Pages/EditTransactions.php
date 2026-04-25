@@ -79,12 +79,18 @@ class EditTransactions extends Page implements HasForms
                     Select::make('source_id')->label(__('widget.account'))->required()
                         ->options(fn () => $this->accounts)
                         ->searchable()
-                        ->createOptionUsing(fn (string $value): string => $value),
+                        ->createOptionForm([
+                            TextInput::make('name')->label(__('widget.name'))->required(),
+                        ])
+                        ->createOptionUsing(fn (array $data): string => $data['name']),
 
                     Select::make('destination_id')->label(__('widget.destination'))->required()
                         ->options(fn () => $this->accounts)
                         ->searchable()
-                        ->createOptionUsing(fn (string $value): string => $value),
+                        ->createOptionForm([
+                            TextInput::make('name')->label(__('widget.name'))->required(),
+                        ])
+                        ->createOptionUsing(fn (array $data): string => $data['name']),
 
                     DateTimePicker::make('date')
                         ->label(__('widget.date'))
