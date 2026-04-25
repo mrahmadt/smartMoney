@@ -77,6 +77,7 @@ class KeywordResource extends Resource
                     ->default('ignore')
                     ->required(),
                 Toggle::make('is_active')
+                    ->default(true)
                     ->required(),
                 Select::make('sender_id')
                     ->relationship('sender', 'sender')
