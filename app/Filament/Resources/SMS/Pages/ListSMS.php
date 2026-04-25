@@ -36,6 +36,7 @@ class ListSMS extends ListRecords
                 ->action(function (array $data) {
                     $sender = $data['sender'];
                     $message = SMS::removeHiddenChars($data['message']);
+                    $message = SMS::preClean($message);
 
                     if (SMS::isDuplicate($sender, $message)) {
                         Notification::make()

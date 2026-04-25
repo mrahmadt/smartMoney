@@ -101,8 +101,8 @@ class DebugSMS extends Page implements HasForms
         $sms = new SMS;
         $sms->sender = strtolower($state['sender']);
         $sms->message = SMS::removeHiddenChars($state['message']);
+        $sms->message = SMS::preClean($sms->message);
         $sms->content = ['query' => ['sender' => $state['sender'], 'message' => ['text' => $state['message']]]];
-
         $job = new parseSMSJob($sms, dryRun: true);
         $job->handle();
 
