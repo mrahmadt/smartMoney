@@ -77,9 +77,12 @@ class EditTransactions extends Page implements HasForms
                     TextInput::make('amount')->label(__('widget.amount'))->required()->formatStateUsing(fn ($state) => number_format($state, 2, '.', ','))->suffix(fn () => $this->data['currency_code'] ?? ''),
 
                     Select::make('source_id')->label(__('widget.account'))->required()
-                        ->options(fn () => $this->accounts),
+                        ->options(fn () => $this->accounts)
+                        ->searchable(),
 
-                    TextInput::make('destination_name')->label(__('widget.destination'))->required(),
+                    Select::make('destination_id')->label(__('widget.destination'))->required()
+                        ->options(fn () => $this->accounts)
+                        ->searchable(),
 
                     DateTimePicker::make('date')
                         ->label(__('widget.date'))
@@ -128,12 +131,15 @@ class EditTransactions extends Page implements HasForms
         $firefly = new fireflyIII;
         $firefly->updateTransaction($this->transactionId, $state);
 
-        if ($updateDefaultCategory && ! empty($state['category_name']) && ! empty($state['destination_name'])) {
-            $category = Category::firstOrCreate(['name' => $state['category_name']]);
-            CategoryMapping::updateOrCreate(
-                ['account_name' => $state['destination_name']],
-                ['category_id' => $category->id],
-            );
+        if ($updateDefaultCategory && ! empty($state['category_name']) && ! empty($state['destination_id'])) {
+            $destinationName = $this->accounts[$state['destination_id']] ?? null;
+            if ($destinationName) {
+                $category = Category::firstOrCreate(['name' => $state['category_name']]);
+                CategoryMapping::updateOrCreate(
+                    ['account_name' => $destinationName],
+                    ['category_id' => $category->id],
+                );
+            }
         }
 
         Notification::make()
@@ -163,18 +169,20 @@ class EditTransactions extends Page implements HasForms
         }
         $this->budgets = $budgets;
 
-        $accountsFF = $firefly->getAccounts(type: 'asset');
-        if (! empty($accountsFF)) {
-            $accountsFF = $accountsFF->data;
-            foreach ($accountsFF as $accountFF) {
-                $accounts[$accountFF->id] = $accountFF->attributes->name.' ('.$accountFF->attributes->currency_code.')';
+        $accounts = [];
+        foreach (['asset', 'expense', 'revenue'] as $type) {
+            $accountsFF = $firefly->getAccounts(type: $type);
+            if (! empty($accountsFF)) {
+                foreach ($accountsFF->data as $accountFF) {
+                    $accounts[$accountFF->id] = $accountFF->attributes->name;
+                }
             }
         }
         $this->accounts = $accounts;
         $this->categories = Category::all()
             ->mapWithKeys(fn (Category $c) => [$c->name => $c->translatedName()])
             ->toArray();
-        dd($transaction);
+
         return $transaction;
     }
 }
