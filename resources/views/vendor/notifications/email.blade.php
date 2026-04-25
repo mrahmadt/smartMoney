@@ -2,10 +2,8 @@
 {{-- Intro Lines --}}
 @foreach ($introLines as $line)
 {{ $line }}
-
 @endforeach
-
-{{-- Action Button --}}
+{{-- Action --}}
 @isset($actionText)
 <?php
     $color = match ($level) {
@@ -17,13 +15,10 @@
 {{ $actionText }}
 </x-mail::button>
 @endisset
-
 {{-- Outro Lines --}}
 @foreach ($outroLines as $line)
 {{ $line }}
-
 @endforeach
-
 {{-- Subcopy --}}
 @isset($actionText)
 <x-slot:subcopy>
