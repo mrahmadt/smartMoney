@@ -80,7 +80,7 @@ class EditTransactions extends Page implements HasForms
                         ->options(fn () => $this->accounts)
                         ->searchable()
                         ->createOptionForm([
-                            TextInput::make('name')->label(__('widget.name'))->required(),
+                            TextInput::make('name')->label(__('menu.name'))->required(),
                         ])
                         ->createOptionUsing(fn (array $data): string => $data['name']),
 
@@ -88,7 +88,7 @@ class EditTransactions extends Page implements HasForms
                         ->options(fn () => $this->accounts)
                         ->searchable()
                         ->createOptionForm([
-                            TextInput::make('name')->label(__('widget.name'))->required(),
+                            TextInput::make('name')->label(__('menu.name'))->required(),
                         ])
                         ->createOptionUsing(fn (array $data): string => $data['name']),
 
