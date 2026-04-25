@@ -64,7 +64,6 @@ class parseSMSJob implements ShouldQueue
             if (! $this->dryRun) {
                 SMS::processInvalidSMS(sms: $this->sms, errors: 'Not a valid bank transaction');
             }
-
             return;
         }
         $this->dryRunLog('info', 'SMS is a valid bank transaction');
