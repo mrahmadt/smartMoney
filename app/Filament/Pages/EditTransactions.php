@@ -58,6 +58,27 @@ class EditTransactions extends Page implements HasForms
         $this->form->fill($this->data);
     }
 
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('delete')
+                ->label(__('widget.delete'))
+                ->color('danger')
+                ->requiresConfirmation()
+                ->action(function (): void {
+                    $firefly = new fireflyIII;
+                    $firefly->deleteTransaction($this->transactionId);
+
+                    Notification::make()
+                        ->success()
+                        ->title(__('widget.deleted'))
+                        ->send();
+
+                    $this->redirect('/');
+                }),
+        ];
+    }
+
     public function form(Schema $schema): Schema
     {
         return $schema

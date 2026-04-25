@@ -40,6 +40,8 @@ return [
     'update_default_category' => 'Update default category for this store',
     'saved' => 'Saved',
     'save' => 'Save',
+    'delete' => 'Delete',
+    'deleted' => 'Deleted',
     'web_push_prompt' => 'Enable browser notifications to stay updated on new transactions and alerts.',
     'web_push_enable' => 'Enable Notifications',
     'show_in_dashboard' => 'Show in Dashboard',

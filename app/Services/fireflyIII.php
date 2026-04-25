@@ -6,18 +6,22 @@ use Illuminate\Support\Facades\Log;
 
 class fireflyIII
 {
-
     private $fireflyIII_URL = null;
+
     private $fireflyIII_API_TOKEN = null;
+
     private static $categories = [];
+
     public $transactionsMeta = null;
+
     public $transactionsLinks = null;
 
-    function __construct()
+    public function __construct()
     {
         $this->fireflyIII_URL = config('app.FireFlyIII.url');
         $this->fireflyIII_API_TOKEN = config('app.FireFlyIII.token');
     }
+
     public function createSubscription($options)
     {
         $defaultOptions = [
@@ -30,9 +34,13 @@ class fireflyIII
         ];
         $options = array_merge($defaultOptions, $options);
         $subscription = $this->callAPI(apiName: 'subscriptions', parms: $options, method: 'POST');
-        if (isset($subscription->exception) || isset($subscription->errors)) return false;
+        if (isset($subscription->exception) || isset($subscription->errors)) {
+            return false;
+        }
+
         return $subscription;
     }
+
     public function getSubscriptions($page = 1, $limit = 50)
     {
         $options = [
@@ -40,21 +48,32 @@ class fireflyIII
             'page' => $page,
         ];
         $subscriptions = $this->callAPI(apiName: 'subscriptions', parms: $options);
-        if (isset($subscriptions->exception)) return false;
+        if (isset($subscriptions->exception)) {
+            return false;
+        }
+
         return $subscriptions;
     }
+
     public function findSubscription($name = null)
     {
         $page = 1;
         while (true) {
             $subscriptions = $this->getSubscriptions($page, 50);
-            if (!$subscriptions) return false;
-            foreach ($subscriptions->data as $subscription) {
-                if ($subscription->attributes->name == $name) return $subscription;
+            if (! $subscriptions) {
+                return false;
             }
-            if ($subscriptions->meta->pagination->current_page == $subscriptions->meta->pagination->total_pages) break;
+            foreach ($subscriptions->data as $subscription) {
+                if ($subscription->attributes->name == $name) {
+                    return $subscription;
+                }
+            }
+            if ($subscriptions->meta->pagination->current_page == $subscriptions->meta->pagination->total_pages) {
+                break;
+            }
             $page++;
         }
+
         return false;
     }
 
@@ -70,9 +89,13 @@ class fireflyIII
         ];
         $options = array_merge($defaultOptions, $options);
         $bill = $this->callAPI(apiName: 'bills', parms: $options, method: 'POST');
-        if (isset($bill->exception) || isset($bill->errors)) return false;
+        if (isset($bill->exception) || isset($bill->errors)) {
+            return false;
+        }
+
         return $bill;
     }
+
     public function getBills($page = 1, $limit = 50)
     {
         $options = [
@@ -80,21 +103,32 @@ class fireflyIII
             'page' => $page,
         ];
         $bills = $this->callAPI(apiName: 'bills', parms: $options);
-        if (isset($bills->exception)) return false;
+        if (isset($bills->exception)) {
+            return false;
+        }
+
         return $bills;
     }
+
     public function findBill($name = null)
     {
         $page = 1;
         while (true) {
             $bills = $this->getBills($page, 50);
-            if (!$bills) return false;
-            foreach ($bills->data as $bill) {
-                if ($bill->attributes->name == $name) return $bill;
+            if (! $bills) {
+                return false;
             }
-            if ($bills->meta->pagination->current_page == $bills->meta->pagination->total_pages) break;
+            foreach ($bills->data as $bill) {
+                if ($bill->attributes->name == $name) {
+                    return $bill;
+                }
+            }
+            if ($bills->meta->pagination->current_page == $bills->meta->pagination->total_pages) {
+                break;
+            }
             $page++;
         }
+
         return false;
     }
 
@@ -110,7 +144,10 @@ class fireflyIII
         ];
         $options = array_merge($defaultOptions, $options);
         $role = $this->callAPI(apiName: 'rules', parms: $options, method: 'POST');
-        if (isset($role->exception) || isset($role->errors)) return false;
+        if (isset($role->exception) || isset($role->errors)) {
+            return false;
+        }
+
         return $role;
     }
 
@@ -121,7 +158,10 @@ class fireflyIII
             'page' => $page,
         ];
         $rules = $this->callAPI(apiName: 'rules', parms: $options);
-        if (isset($rules->exception)) return false;
+        if (isset($rules->exception)) {
+            return false;
+        }
+
         return $rules;
     }
 
@@ -130,13 +170,20 @@ class fireflyIII
         $page = 1;
         while (true) {
             $rules = $this->getRules($page, 50);
-            if (!$rules) return false;
-            foreach ($rules->data as $rule) {
-                if ($rule->attributes->title == $name) return $rule;
+            if (! $rules) {
+                return false;
             }
-            if ($rules->meta->pagination->current_page == $rules->meta->pagination->total_pages) break;
+            foreach ($rules->data as $rule) {
+                if ($rule->attributes->title == $name) {
+                    return $rule;
+                }
+            }
+            if ($rules->meta->pagination->current_page == $rules->meta->pagination->total_pages) {
+                break;
+            }
             $page++;
         }
+
         return false;
     }
 
@@ -149,95 +196,145 @@ class fireflyIII
             // 'accounts' => [],
         ];
         $options = array_merge($defaultOptions, $options);
-        $triggerRule = $this->callAPI(apiName: 'rules/' . $options['id'] . '/trigger', parms: $options, method: 'POST');
-        if (isset($triggerRule->exception)) return false;
+        $triggerRule = $this->callAPI(apiName: 'rules/'.$options['id'].'/trigger', parms: $options, method: 'POST');
+        if (isset($triggerRule->exception)) {
+            return false;
+        }
+
         return true;
     }
+
     public function createRuleGroup($options)
     {
         $defaultOptions = [];
         $options = array_merge($defaultOptions, $options);
         $ruleGroup = $this->callAPI(apiName: 'rule-groups', parms: $options, method: 'POST');
-        if (isset($ruleGroup->exception) || isset($ruleGroup->errors)) return false;
+        if (isset($ruleGroup->exception) || isset($ruleGroup->errors)) {
+            return false;
+        }
+
         return $ruleGroup;
     }
 
-
     public function getCategories($limit = 50, $page = 1)
     {
-        if (count(self::$categories) > 0) return self::$categories;
+        if (count(self::$categories) > 0) {
+            return self::$categories;
+        }
 
         $categories = $this->callAPI('categories', ['limit' => $limit, 'page' => $page]);
-        if (isset($categories->exception) || isset($categories->errors) || isset($categories->message)) return [];
-        if (!isset($categories->data)) return [];
+        if (isset($categories->exception) || isset($categories->errors) || isset($categories->message)) {
+            return [];
+        }
+        if (! isset($categories->data)) {
+            return [];
+        }
 
         self::$categories = [];
         foreach ($categories->data as $category) {
-            if (trim($category->attributes->name) == '') continue;
+            if (trim($category->attributes->name) == '') {
+                continue;
+            }
             self::$categories[] = $category->attributes->name;
         }
+
         return self::$categories;
     }
+
     public function lookupCategory($shop, $exactMatch = false)
     {
         $query = 'has_any_category:true';
         if ($exactMatch) {
-            $query .= ' account_is:"' . $shop . '"';
+            $query .= ' account_is:"'.$shop.'"';
         } else {
-            $query .= ' account_starts:"' . $shop . '"';
+            $query .= ' account_starts:"'.$shop.'"';
         }
         $category = $this->searchTransactions($query, 1);
-        if ($category == false) return false;
+        if ($category == false) {
+            return false;
+        }
 
-        if (!isset($category->data[0]->attributes->transactions[0]->category_name)) return false;
+        if (! isset($category->data[0]->attributes->transactions[0]->category_name)) {
+            return false;
+        }
+
         return $category->data[0]->attributes->transactions[0]->category_name;
     }
-
 
     public function newCurrency($code, $name, $symbol, $enabled = true, $default = false, $decimal_places = 2)
     {
         $params = ['code' => $code, 'name' => $name, 'symbol' => $symbol, 'enabled' => $enabled, 'default' => $default, 'decimal_places' => $decimal_places];
         $currency = $this->callAPI(apiName: 'currencies', parms: $params, method: 'POST');
-        if (isset($currency->exception) || isset($currency->errors)) return false;
+        if (isset($currency->exception) || isset($currency->errors)) {
+            return false;
+        }
+
         return $currency;
     }
 
     public function updateCurrency($code, $enabled = true, $default = null)
     {
         $params = ['enabled' => $enabled];
-        if ($default != null) $params['default'] = $default;
-        $currency = $this->callAPI(apiName: 'currencies/' . $code, parms: $params, method: 'PUT');
-        if (isset($currency->exception) || isset($currency->errors) || isset($currency->message)) return false;
+        if ($default != null) {
+            $params['default'] = $default;
+        }
+        $currency = $this->callAPI(apiName: 'currencies/'.$code, parms: $params, method: 'PUT');
+        if (isset($currency->exception) || isset($currency->errors) || isset($currency->message)) {
+            return false;
+        }
+
         return $currency;
     }
 
     public function getCurrency($code)
     {
-        $currency = $this->callAPI('currencies/' . $code);
-        if (isset($currency->exception) || isset($currency->errors)) return false;
+        $currency = $this->callAPI('currencies/'.$code);
+        if (isset($currency->exception) || isset($currency->errors)) {
+            return false;
+        }
+
         return $currency;
     }
+
     public function getExchangeRate($from, $to, $limit = 1)
     {
-        $exchangeRates = $this->callAPI('exchange-rates/' . $from . '/' . $to, ['limit' => $limit]);
-        if (isset($exchangeRates->exception) || isset($exchangeRates->errors)) return false;
+        $exchangeRates = $this->callAPI('exchange-rates/'.$from.'/'.$to, ['limit' => $limit]);
+        if (isset($exchangeRates->exception) || isset($exchangeRates->errors)) {
+            return false;
+        }
+
         return $exchangeRates;
     }
 
     public function getBudget($budget_id = null, $start = null, $end = null)
     {
-        if ($start == null) $start = date('Y-m-01');
-        if ($end == null) $end = date('Y-m-t');
-        $budget = $this->callAPI('budgets/' . $budget_id, ['start' => $start, 'end' => $end]);
-        if (isset($budget->exception) || isset($budget->errors)) return false;
+        if ($start == null) {
+            $start = date('Y-m-01');
+        }
+        if ($end == null) {
+            $end = date('Y-m-t');
+        }
+        $budget = $this->callAPI('budgets/'.$budget_id, ['start' => $start, 'end' => $end]);
+        if (isset($budget->exception) || isset($budget->errors)) {
+            return false;
+        }
+
         return $budget;
     }
+
     public function getBudgets($limit = 50, $page = 1, $start = null, $end = null)
     {
-        if ($start == null) $start = date('Y-m-01');
-        if ($end == null) $end = date('Y-m-t');
+        if ($start == null) {
+            $start = date('Y-m-01');
+        }
+        if ($end == null) {
+            $end = date('Y-m-t');
+        }
         $budgets = $this->callAPI('budgets', ['limit' => $limit, 'page' => $page, 'start' => $start, 'end' => $end]);
-        if (isset($budgets->exception) || isset($budgets->errors)) return false;
+        if (isset($budgets->exception) || isset($budgets->errors)) {
+            return false;
+        }
+
         return $budgets;
     }
 
@@ -279,31 +376,34 @@ class fireflyIII
         ];
 
         $result = $this->callAPI(apiName: 'transactions', parms: $params, method: 'POST');
+
         // if(isset($result->exception) || isset($result->errors) || isset($result->message)) return false;
         return $result;
     }
 
-
     public function searchTransactions($query, $limit = 10)
     {
         $transactions = $this->callAPI('search/transactions', ['limit' => $limit, 'query' => $query]);
-        if (isset($transactions->exception) || isset($transactions->errors)) return false;
+        if (isset($transactions->exception) || isset($transactions->errors)) {
+            return false;
+        }
+
         return $transactions;
     }
 
-public function getCategoryTransactions($category_id, $start = null, $end = null, $filter = [], $limit = 1000, $page = 1, $type = null)
+    public function getCategoryTransactions($category_id, $start = null, $end = null, $filter = [], $limit = 1000, $page = 1, $type = null)
     {
-        return $this->fetchTransactions('categories/' . $category_id . '/transactions', $start, $end, $filter, $limit, $page, $type);
+        return $this->fetchTransactions('categories/'.$category_id.'/transactions', $start, $end, $filter, $limit, $page, $type);
     }
 
     public function getBudgetTransactions($budget_id, $start = null, $end = null, $filter = [], $limit = 1000, $page = 1, $type = null)
     {
-        return $this->fetchTransactions('budgets/' . $budget_id . '/transactions', $start, $end, $filter, $limit, $page, $type);
+        return $this->fetchTransactions('budgets/'.$budget_id.'/transactions', $start, $end, $filter, $limit, $page, $type);
     }
 
     public function getAccountTransactions($account_id, $start = null, $end = null, $filter = [], $limit = 1000, $page = 1, $type = null)
     {
-        return $this->fetchTransactions('accounts/' . $account_id . '/transactions/', $start, $end, $filter, $limit, $page, $type);
+        return $this->fetchTransactions('accounts/'.$account_id.'/transactions/', $start, $end, $filter, $limit, $page, $type);
     }
 
     public function getTransactions($start = null, $end = null, $filter = [], $limit = 1000, $page = 1, $type = null)
@@ -325,7 +425,7 @@ public function getCategoryTransactions($category_id, $start = null, $end = null
 
         $transactions = $this->callAPI($endpoint, ['start' => $start, 'end' => $end, 'limit' => $limit, 'page' => $page, 'type' => $type]);
 
-        if (isset($transactions->exception) || !isset($transactions->data[0])) {
+        if (isset($transactions->exception) || ! isset($transactions->data[0])) {
             return false;
         }
 
@@ -333,7 +433,7 @@ public function getCategoryTransactions($category_id, $start = null, $end = null
         foreach ($transactions->data as $transaction) {
             $include = true;
             foreach ($filter as $key => $value) {
-                if ((!is_array($value) && $transaction->attributes->transactions[0]->$key != $value) || (is_array($value) && !in_array($transaction->attributes->transactions[0]->$key, $value))) {
+                if ((! is_array($value) && $value != $transaction->attributes->transactions[0]->$key) || (is_array($value) && ! in_array($transaction->attributes->transactions[0]->$key, $value))) {
                     $include = false;
                     break;
                 }
@@ -344,38 +444,56 @@ public function getCategoryTransactions($category_id, $start = null, $end = null
         }
         $this->transactionsMeta = $transactions->meta ?? [];
         $this->transactionsLinks = $transactions->links ?? [];
+
         return $filteredTransactions;
     }
 
     public function getTransaction($transaction_id)
     {
-        $transaction = $this->callAPI('transactions/' . $transaction_id);
-        if (isset($transaction->exception)) return false;
-        if (!isset($transaction->data->attributes->transactions[0])) return false;
+        $transaction = $this->callAPI('transactions/'.$transaction_id);
+        if (isset($transaction->exception)) {
+            return false;
+        }
+        if (! isset($transaction->data->attributes->transactions[0])) {
+            return false;
+        }
+
         return $transaction->data->attributes->transactions[0];
     }
+
     public function moveTransactions($where_account_id, $to_account_id)
     {
         $options = [
             'query' => [
                 'where' => ['account_id' => $where_account_id],
                 'update' => ['account_id' => $to_account_id],
-            ]
+            ],
         ];
         $this->callAPI('data/bulk/transactions', $options, 'POST');
+
         return true;
     }
+
     public function updateTransaction($id, $data)
     {
         $options = ['transactions' => [$data]];
-        $this->callAPI('transactions/' . $id, $options, 'PUT');
+        $this->callAPI('transactions/'.$id, $options, 'PUT');
+
         return true;
     }
 
     public function deleteAccount($account_id)
     {
-        $account = $this->callAPI('accounts/' . $account_id, [], 'DELETE');
+        $account = $this->callAPI('accounts/'.$account_id, [], 'DELETE');
+
         return $account;
+    }
+
+    public function deleteTransaction($transaction_id)
+    {
+        $this->callAPI('transactions/'.$transaction_id, [], 'DELETE');
+
+        return true;
     }
 
     public function createAccount($name, $type = 'asset', $account_options = [])
@@ -388,20 +506,27 @@ public function getCategoryTransactions($category_id, $start = null, $end = null
         $options = array_merge($default_options, $account_options);
 
         $account = $this->callAPI('accounts', $options, 'POST');
+
         return $account;
     }
 
     public function getAccount($account_id = null)
     {
-        $account = $this->callAPI('accounts/' . $account_id);
-        if (isset($account->exception) || isset($account->errors)) return false;
+        $account = $this->callAPI('accounts/'.$account_id);
+        if (isset($account->exception) || isset($account->errors)) {
+            return false;
+        }
+
         return $account;
     }
 
     public function getAccounts($type = 'asset')
     {
         $account = $this->callAPI('accounts', ['type' => $type]);
-        if (isset($account->exception) || isset($account->errors)) return false;
+        if (isset($account->exception) || isset($account->errors)) {
+            return false;
+        }
+
         return $account;
     }
 
@@ -413,8 +538,13 @@ public function getCategoryTransactions($category_id, $start = null, $end = null
     public function getAccountBy($field = 'name', $accountType = 'asset', $fieldValue = null)
     {
         $accounts = $this->callAPI('search/accounts', ['limit' => 50, 'query' => $fieldValue, 'field' => $field, 'type' => $accountType, 'page' => 1]);
-        if ($accounts == false) return false;
-        if (isset($accounts->data[0])) return $accounts->data[0];
+        if ($accounts == false) {
+            return false;
+        }
+        if (isset($accounts->data[0])) {
+            return $accounts->data[0];
+        }
+
         return false;
     }
 
@@ -422,27 +552,28 @@ public function getCategoryTransactions($category_id, $start = null, $end = null
     {
         return $this->callAPI('about');
     }
+
     private function callAPI($apiName, $parms = [], $method = 'GET')
     {
         $curl = curl_init();
         Log::debug('fireflyIII API Request', [
             'method' => $method,
             'endpoint' => $apiName,
-            'full_endpoint' => $this->fireflyIII_URL . $apiName,
+            'full_endpoint' => $this->fireflyIII_URL.$apiName,
             'params' => $parms,
         ]);
         if ($method == 'GET') {
             $query = http_build_query($parms);
-            curl_setopt($curl, CURLOPT_URL, $this->fireflyIII_URL . $apiName . '?' . $query);
+            curl_setopt($curl, CURLOPT_URL, $this->fireflyIII_URL.$apiName.'?'.$query);
             curl_setopt($curl, CURLOPT_POST, false);
         } else {
-            curl_setopt($curl, CURLOPT_URL, $this->fireflyIII_URL . $apiName);
+            curl_setopt($curl, CURLOPT_URL, $this->fireflyIII_URL.$apiName);
             if ($method !== 'DELETE') {
                 curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($parms));
             }
         }
         curl_setopt($curl, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . $this->fireflyIII_API_TOKEN,
+            'Authorization: Bearer '.$this->fireflyIII_API_TOKEN,
             'Accept: application/json',
             'Content-Type: application/json',
         ]);
@@ -459,18 +590,19 @@ public function getCategoryTransactions($category_id, $start = null, $end = null
         $response = curl_exec($curl);
         if ($response === false) {
             Log::error([
-                'message' => 'cURL error: ' . curl_error($curl),
+                'message' => 'cURL error: '.curl_error($curl),
                 'method' => $method,
                 'endpoint' => $apiName,
                 'params' => $parms,
             ]);
+
             return false;
         }
 
         Log::debug('fireflyIII API', [
             'method' => $method,
             'endpoint' => $apiName,
-            'full_endpoint' => $this->fireflyIII_URL . $apiName,
+            'full_endpoint' => $this->fireflyIII_URL.$apiName,
             'params' => $parms,
             'http_code' => curl_getinfo($curl, CURLINFO_HTTP_CODE),
         ]);
