@@ -175,14 +175,17 @@ class SMS extends Model
                         $message = mb_substr($message, 0, 100);
                     }
                 }
+                $message = $sms->sender.': '.($message ?: 'Invalid SMS');
                 app()->setLocale($user->language ?? 'en');
                 Alert::createAlert(
                     title: __('alert.invalid_sms_title'),
-                    message: ($message ? $message : 'Invalid SMS'),
+                    message: $message,
                     user: $user,
                     topic: 'Invalid SMS',
                     data: [
                         'sms_id' => $sms->id,
+                        'sender' => $sms->sender,
+                        'sms_message' => mb_substr($sms->message ?? '', 0, 200),
                         'errors' => ($errors ? json_encode($errors) : 'Unknown'),
                     ]
                 );

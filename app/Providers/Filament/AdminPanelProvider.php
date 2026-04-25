@@ -80,6 +80,7 @@ class AdminPanelProvider extends PanelProvider
             ->globalSearch(false)
             // ->topNavigation()
             ->topNavigation(false)
+            ->sidebarFullyCollapsibleOnDesktop()
             ->renderHook(
                 'panels::head.end',
                 fn () => '<script src="/js/webpush.js"></script><style>.fi-page-content {row-gap: calc(var(--spacing) * 0.2) !important;} .fi-page-header-main-ctn { padding-top: 1px !important; padding-bottom: 0 !important; }</style>'
