@@ -11,13 +11,21 @@ class KeywordSeeder extends Seeder
 {
     public function run(): void
     {
-        $rows = self::seedRows();
-
-        Keyword::upsert(
-            $rows,
-            ['keyword', 'keyword_type', 'is_regularExp', 'sender_id'],
-            ['replaceWith', 'is_active', 'name', 'updated_at']
-        );
+        foreach (self::seedRows() as $row) {
+            Keyword::updateOrCreate(
+                [
+                    'keyword' => $row['keyword'],
+                    'keyword_type' => $row['keyword_type'],
+                    'is_regularExp' => $row['is_regularExp'],
+                    'sender_id' => $row['sender_id'],
+                ],
+                [
+                    'name' => $row['name'],
+                    'replaceWith' => $row['replaceWith'],
+                    'is_active' => $row['is_active'],
+                ],
+            );
+        }
     }
 
     public static function regex_replaceWith(): array
@@ -105,7 +113,7 @@ class KeywordSeeder extends Seeder
     public static function regex_urls(): array
     {
         return [
-            ['keyword' => "/(?i)\b((?:[a-z][\w-]+:(?:\/{1,3}|[a-z0-9%])|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»\"\"\u2018\u2019']))/", 'name' => 'URL pattern'],
+            ['keyword' => '/(?i)\b((?:[a-z][\w-]+:(?:\/{1,3}|[a-z0-9%])|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:\x{2018}\x{2019}\'\".,<>?\x{ab}\x{bb}\x{201c}\x{201d}]))/u', 'name' => 'URL pattern'],
         ];
     }
 

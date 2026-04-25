@@ -106,6 +106,7 @@ class DebugSMS extends Page implements HasForms
         $job = new parseSMSJob($sms, dryRun: true);
         $job->handle();
 
+        dd($job->dryRunOutput, $sms->message , $sms->content );
         $this->results = $job->dryRunOutput;
     }
 }
