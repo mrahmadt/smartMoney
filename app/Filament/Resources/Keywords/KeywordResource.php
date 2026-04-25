@@ -27,11 +27,13 @@ class KeywordResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
     protected static ?string $recordTitleAttribute = 'Keyword';
+
     protected static ?int $navigationSort = 11;
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
         app()->setLocale(auth()->user()->language ?? 'en');
+
         return __('menu.config');
     }
 
@@ -54,6 +56,8 @@ class KeywordResource extends Resource
     {
         return $schema
             ->components([
+                TextInput::make('name')
+                    ->maxLength(100),
                 TextInput::make('keyword')
                     ->required(),
                 Toggle::make('is_regularExp')
@@ -61,22 +65,22 @@ class KeywordResource extends Resource
                 TextInput::make('replaceWith'),
                 Select::make('keyword_type')
                     ->options([
-            'phone' => 'Phone',
-            'passcodes' => 'Passcodes',
-            'misc' => 'Misc',
-            'date' => 'Date',
-            'url' => 'Url',
-            'ignore' => 'Ignore',
-            'breaks' => 'Breaks',
-            'replace' => 'Replace',
-        ])
+                        'phone' => 'Phone',
+                        'passcodes' => 'Passcodes',
+                        'misc' => 'Misc',
+                        'date' => 'Date',
+                        'url' => 'Url',
+                        'ignore' => 'Ignore',
+                        'breaks' => 'Breaks',
+                        'replace' => 'Replace',
+                    ])
                     ->default('ignore')
                     ->required(),
                 Toggle::make('is_active')
                     ->required(),
-                TextInput::make('channel')
-                    ->required()
-                    ->default('sms'),
+                Select::make('sender_id')
+                    ->relationship('sender', 'sender')
+                    ->placeholder('All Senders'),
             ]);
     }
 
@@ -85,6 +89,8 @@ class KeywordResource extends Resource
         return $table
             ->recordTitleAttribute('Keyword')
             ->columns([
+                TextColumn::make('name')
+                    ->searchable(),
                 TextColumn::make('keyword')
                     ->searchable(),
                 IconColumn::make('is_regularExp')
@@ -95,7 +101,9 @@ class KeywordResource extends Resource
                     ->badge(),
                 IconColumn::make('is_active')
                     ->boolean(),
-                TextColumn::make('channel')
+                TextColumn::make('sender.sender')
+                    ->label('Sender')
+                    ->default('All')
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->dateTime()

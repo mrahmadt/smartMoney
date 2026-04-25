@@ -57,13 +57,14 @@ class parseSMSJob implements ShouldQueue
         }
         $this->SMS_sender = $SMS_sender;
 
-        $isValid = SMS::isValidBankTransaction(message: $this->sms->message, cleanSMS: false);
+        $isValid = SMS::isValidBankTransaction(message: $this->sms->message, cleanSMS: false, senderId: $this->SMS_sender->id);
 
         if (! $isValid) {
             $this->dryRunLog('error', 'Not a valid bank transaction');
             if (! $this->dryRun) {
                 SMS::processInvalidSMS(sms: $this->sms, errors: 'Not a valid bank transaction');
             }
+
             return;
         }
         $this->dryRunLog('info', 'SMS is a valid bank transaction');
@@ -232,6 +233,7 @@ class parseSMSJob implements ShouldQueue
                 $this->createPendingTransaction($transaction, 'error', $status['error'] ?? 'Unknown error');
                 SMS::processInvalidSMS(sms: $this->sms, message: 'Failed validation for review', errors: 'Validation failed: '.($status['error'] ?? 'Unknown'), keep: true);
             }
+
             return;
         }
 
@@ -266,6 +268,7 @@ class parseSMSJob implements ShouldQueue
             // Create a pending transaction for review so the user can fix and retry
             $this->createPendingTransaction($transaction, 'error', $status['error'] ?? 'Unknown error');
             SMS::processInvalidSMS(sms: $this->sms, message: 'Failed to create transaction', errors: 'Failed to create transaction: '.$status['error'].' '.print_r($transaction, true), keep: true);
+
             return;
         }
     }

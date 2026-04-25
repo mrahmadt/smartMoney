@@ -102,10 +102,10 @@ class SMS extends Model
         return $message;
     }
 
-    public static function isValidBankTransaction($message, $cleanSMS = true)
+    public static function isValidBankTransaction($message, $cleanSMS = true, ?int $senderId = null)
     {
         if ($cleanSMS) {
-            $message = self::preClean($message);
+            $message = self::preClean($message, $senderId);
         }
 
         // No numbers
@@ -118,13 +118,13 @@ class SMS extends Model
             return false;
         }
 
-        foreach (Keyword::regex_ignoreSMS() as $re) {
+        foreach (Keyword::regex_ignoreSMS($senderId) as $re) {
             if (preg_match($re, $message)) {
                 return false;
             }
         }
 
-        foreach (Keyword::str_ignoreSMS() as $keyword) {
+        foreach (Keyword::str_ignoreSMS($senderId) as $keyword) {
             if (stripos($message, $keyword) !== false) {
                 return false;
             }
