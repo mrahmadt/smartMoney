@@ -78,11 +78,13 @@ class EditTransactions extends Page implements HasForms
 
                     Select::make('source_id')->label(__('widget.account'))->required()
                         ->options(fn () => $this->accounts)
-                        ->searchable(),
+                        ->searchable()
+                        ->createOptionUsing(fn (string $value): string => $value),
 
                     Select::make('destination_id')->label(__('widget.destination'))->required()
                         ->options(fn () => $this->accounts)
-                        ->searchable(),
+                        ->searchable()
+                        ->createOptionUsing(fn (string $value): string => $value),
 
                     DateTimePicker::make('date')
                         ->label(__('widget.date'))
@@ -128,18 +130,27 @@ class EditTransactions extends Page implements HasForms
         $updateDefaultCategory = $state['update_default_category'] ?? false;
         unset($state['update_default_category']);
 
+        if (! is_numeric($state['source_id'])) {
+            $state['source_name'] = $state['source_id'];
+            unset($state['source_id']);
+        }
+
+        if (! is_numeric($state['destination_id'])) {
+            $state['destination_name'] = $state['destination_id'];
+            unset($state['destination_id']);
+        }
+
+        $destinationName = $state['destination_name'] ?? ($this->accounts[$state['destination_id']] ?? null);
+
         $firefly = new fireflyIII;
         $firefly->updateTransaction($this->transactionId, $state);
 
-        if ($updateDefaultCategory && ! empty($state['category_name']) && ! empty($state['destination_id'])) {
-            $destinationName = $this->accounts[$state['destination_id']] ?? null;
-            if ($destinationName) {
-                $category = Category::firstOrCreate(['name' => $state['category_name']]);
-                CategoryMapping::updateOrCreate(
-                    ['account_name' => $destinationName],
-                    ['category_id' => $category->id],
-                );
-            }
+        if ($updateDefaultCategory && ! empty($state['category_name']) && ! empty($destinationName)) {
+            $category = Category::firstOrCreate(['name' => $state['category_name']]);
+            CategoryMapping::updateOrCreate(
+                ['account_name' => $destinationName],
+                ['category_id' => $category->id],
+            );
         }
 
         Notification::make()
